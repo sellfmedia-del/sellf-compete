@@ -5,9 +5,9 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-900">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         
-        {/* Sol: Logo */}
+        {/* Sol: Logotype - COMPETE Turuncu */}
         <Link href="/" className="text-xl font-bold tracking-tighter text-white">
-          SELLFCOMPETE
+          SELLF<span className="text-orange-500">COMPETE</span>
         </Link>
 
         {/* Orta: Linkler */}
@@ -16,7 +16,7 @@ export default function Navbar() {
           <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
         </div>
 
-        {/* Sağ: Aksiyonlar */}
+        {/* Sağ: Aksiyon Butonları */}
         <div className="flex items-center gap-6">
           <Link href="/register" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
             Sign Up
