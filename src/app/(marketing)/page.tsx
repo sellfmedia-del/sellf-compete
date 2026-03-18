@@ -1,12 +1,41 @@
 import React from 'react';
+import Link from 'next/link'; // Next.js yönlendirmesi için gerekli
 import { ArrowRight, BarChart3, Shield, Zap, Globe } from 'lucide-react';
 
 export default function LandingPage() {
   return (
     <div className="bg-[#0a0a0a] text-zinc-100 min-h-screen font-sans selection:bg-white selection:text-black">
       
+      {/* Navbar Section */}
+      <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-zinc-900">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          
+          {/* Sol: Logotype */}
+          <Link href="/" className="text-xl font-bold tracking-tighter text-white">
+            SELLFCOMPETE
+          </Link>
+
+          {/* Orta: Linkler */}
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
+            <Link href="/how-it-works" className="hover:text-white transition-colors">How it works</Link>
+            <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+          </div>
+
+          {/* Sağ: Aksiyon Butonları */}
+          <div className="flex items-center gap-6">
+            <Link href="/register" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+              Sign Up
+            </Link>
+            <Link href="/dashboard" className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5">
+              Dashboard
+            </Link>
+          </div>
+
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 border-b border-zinc-900">
+      <section className="pt-48 pb-20 px-6 border-b border-zinc-900">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-6xl md:text-8xl font-bold tracking-tighter text-white mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             SELLF <br /> COMPETE
@@ -15,12 +44,12 @@ export default function LandingPage() {
             Eliminate guesswork. Audit your competitors with enterprise-grade data and AI-driven insights in seconds.
           </p>
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <button className="bg-white text-black px-8 py-4 rounded-full font-semibold hover:bg-zinc-200 transition-all flex items-center gap-2 group">
+            <Link href="/register" className="bg-white text-black px-8 py-4 rounded-full font-semibold hover:bg-zinc-200 transition-all flex items-center gap-2 group">
               Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button className="bg-transparent border border-zinc-800 px-8 py-4 rounded-full font-medium hover:bg-zinc-900 transition-all">
+            </Link>
+            <Link href="/how-it-works" className="bg-transparent border border-zinc-800 px-8 py-4 rounded-full font-medium hover:bg-zinc-900 transition-all text-white">
               See How It Works
-            </button>
+            </Link>
           </div>
         </div>
       </section>
