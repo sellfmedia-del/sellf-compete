@@ -37,3 +37,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 landing page tamamdır.
 motor takıldı, trendyol çalışıyor.
 amazon da çalışıyor, sadece website ve physical store'da iyileştirme gerekli.
+I Have a product auditleri harika çalışıyor.
