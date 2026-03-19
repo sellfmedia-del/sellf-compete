@@ -105,21 +105,42 @@ export async function runAuditEngine(url: string, type: string, platform: string
     }
   }
 
-  // 2. ADIM: TAVILY - Pazar araştırması (Her zaman çalışır)
+  // 2. ADIM: TAVILY - Pazar araştırması (Akıllı Yönlendirme)
   try {
-    // Tavily'yi de artık Gemini'nin bulduğu anahtar kelimeyle (searchQuery) besliyoruz
-    const searchContext = isUrl ? `${searchQuery} category market analysis` : `${searchQuery} product market trends`;
+    let tavilyQuery = "";
+    let includeAnswer = false;
+
+    if (safePlatform === 'trendyol' || safePlatform === 'amazon') {
+      // Pazar yerleri için çalışan sistemi koruyoruz
+      const searchContext = isUrl ? `${searchQuery} category market analysis` : `${searchQuery} product market trends`;
+      tavilyQuery = `${platform} ${searchContext} customer complaints and commission rates ${currentYear}`;
+    } else if (safePlatform === 'physical store' || safePlatform === 'physical') {
+      // Fiziksel Mağaza / Ürün İçin: Google Haritalar, yerel perakende rakipleri, müşteri deneyimleri
+      tavilyQuery = `"${targetInput}" veya "${searchQuery}" Türkiye fiziksel mağaza ve perakende pazarı yerel ana rakipler (local competitors), Google Haritalar/müşteri yorumları, Şikayetvar deneyimleri, ve fiziksel satış fiyat aralığı (retail pricing) ${currentYear}`;
+      includeAnswer = true;
+    } else {
+      // My Website / Diğer İçin: Tüm interneti tarayıp dashboard boşluklarını dolduracak özel arama
+      tavilyQuery = `"${targetInput}" veya "${searchQuery}" Türkiye pazarı ana rakipler (competitors), alternatif markalar, Şikayetvar müşteri yorumları, Ekşi Sözlük, ve ortalama pazar satış fiyatı aralığı (pricing) ${currentYear}`;
+      includeAnswer = true;
+    }
+
     const tavilyResponse = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
-        query: `${platform} ${searchContext} customer complaints and commission rates ${currentYear}`,
-        search_depth: "advanced"
+        query: tavilyQuery,
+        search_depth: "advanced",
+        include_answer: includeAnswer // Gemini'ye yardımcı olmak için Tavily'den bir AI özeti istiyoruz
       })
     });
     const tavilyData = await tavilyResponse.json();
     searchResearch = JSON.stringify(tavilyData.results);
+
+    // Eğer Tavily bir özet (answer) ürettiyse onu da araştırmanın sonuna ekliyoruz
+    if (includeAnswer && tavilyData.answer) {
+      searchResearch += `\n\nAI Web Summary: ${tavilyData.answer}`;
+    }
   } catch (error) {
     console.error("Tavily Error:", error);
   }
