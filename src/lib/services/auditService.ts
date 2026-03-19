@@ -56,11 +56,23 @@ export async function runAuditEngine(url: string, type: string, platform: string
       break;
     
     case 'Amazon':
-      actorId = "apify~amazon-crawler"; 
+      actorId = "junglee~free-amazon-product-scraper"; 
       const amazonSearchUrl = `https://www.amazon.com.tr/s?k=${encodeURIComponent(searchQuery)}`;
-      const amazonUrls = isUrl ? [url, amazonSearchUrl] : [amazonSearchUrl];
       
-      inputPayload = { "directUrls": amazonUrls, "maxItems": 5 };
+      const amazonUrls = isUrl 
+        ? [{ "url": url }, { "url": amazonSearchUrl }] 
+        : [{ "url": amazonSearchUrl }];
+      
+      inputPayload = { 
+        "categoryUrls": amazonUrls,
+        "ensureLoadedProductDescriptionFields": false,
+        "maxItemsPerStartUrl": 5, // Optimized for performance and cost
+        "maxProductVariantsAsSeparateResults": 0,
+        "maxSearchPagesPerStartUrl": 1, // Restricted to first page only
+        "scrapeProductDetails": true,
+        "scrapeProductVariantPrices": false,
+        "useCaptchaSolver": false
+      };
       break;
 
     default:
