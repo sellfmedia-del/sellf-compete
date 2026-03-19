@@ -98,7 +98,9 @@ export async function runAuditEngine(url: string, type: string, platform: string
         console.error(`APIFY FETCH ERROR - Status: ${apifyResponse.status}, Details: ${errorText}`);
       } else {
         const apifyData = await apifyResponse.json();
-        scrapedData = JSON.stringify(apifyData);
+        // HATA ÇÖZÜMÜ: Apify binlerce veri getirse bile, Vercel çökmesin diye sadece ilk 20'sini alıyoruz
+        const slicedData = Array.isArray(apifyData) ? apifyData.slice(0, 20) : apifyData;
+        scrapedData = JSON.stringify(slicedData);
       }
     } catch (error) {
       console.error("Apify Fetch Error:", error);
