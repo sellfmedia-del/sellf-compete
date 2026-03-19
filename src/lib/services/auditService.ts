@@ -14,12 +14,13 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
   // 0. ADIM: KATEGORİ VE ARAMA KELİMESİ KEŞFİ (The Brain Step)
   // Gemini'ye linki veya fikri verip, pazardaki "anahtar kelimesini" bulduruyoruz.
+  const targetInput = url || type || ""; // HATA ÇÖZÜMÜ: Sadece url değil, type (prompt) da gelebilir
   let searchQuery = "bestseller"; // Fallback kelime
-  const isUrl = url && url.startsWith('http');
+  const isUrl = targetInput.startsWith('http'); // HATA ÇÖZÜMÜ: url değişkeni boşsa hata vermesini önledik
   
   try {
     const prePrompt = `
-      Analyze this user input: "${url}". It is either a specific product URL or a product idea/prompt.
+      Analyze this user input: "${targetInput}". It is either a specific product URL or a product idea/prompt.
       Determine the best, most generic search keyword to find this product and its main competitors on ${platform} in Turkey.
       Return ONLY a raw JSON object with no markdown.
       Structure: {"searchQuery": "string"}
@@ -34,17 +35,19 @@ export async function runAuditEngine(url: string, type: string, platform: string
   // 1. ADIM: SCRAPER ROUTER & APIFY (Hibrit Çalışma)
   let actorId = "";
   let inputPayload = {};
+  const safePlatform = platform ? platform.toLowerCase() : ""; // HATA ÇÖZÜMÜ: Frontend'den gelen büyük/küçük harf sorununu çözdük
 
-  switch (platform) {
-    case 'Trendyol':
+  switch (safePlatform) { // safePlatform kullanıyoruz
+    case 'trendyol':
       actorId = "fatihtahta~trendyol-scraper";
       // Dinamik Kategori URL'si oluşturma
       const trendyolSearchUrl = `https://www.trendyol.com/sr?q=${encodeURIComponent(searchQuery)}`;
       
       // LİNK VARSA: Hem ürünü hem kategoriyi çek. LİNK YOKSA (FİKİR): Sadece kategoriyi çek.
+      // HATA ÇÖZÜMÜ: Trendyol JSON yapısı object değil, direkt string dizisi (array of strings) ister.
       const trendyolUrls = isUrl 
-        ? [{ "url": url }, { "url": trendyolSearchUrl }] 
-        : [{ "url": trendyolSearchUrl }];
+        ? [targetInput, trendyolSearchUrl] 
+        : [trendyolSearchUrl];
 
       inputPayload = {
         "startUrls": trendyolUrls,
@@ -55,12 +58,13 @@ export async function runAuditEngine(url: string, type: string, platform: string
       };
       break;
     
-    case 'Amazon':
+    case 'amazon':
       actorId = "junglee~free-amazon-product-scraper"; 
       const amazonSearchUrl = `https://www.amazon.com.tr/s?k=${encodeURIComponent(searchQuery)}`;
       
+      // Amazon scraper nesne dizisi (array of objects) ister.
       const amazonUrls = isUrl 
-        ? [{ "url": url }, { "url": amazonSearchUrl }] 
+        ? [{ "url": targetInput }, { "url": amazonSearchUrl }] 
         : [{ "url": amazonSearchUrl }];
       
       inputPayload = { 
@@ -87,8 +91,15 @@ export async function runAuditEngine(url: string, type: string, platform: string
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inputPayload)
       });
-      const apifyData = await apifyResponse.json();
-      scrapedData = JSON.stringify(apifyData);
+
+      // HATA ÇÖZÜMÜ: Sessiz hata (Silent Failure) yakalayıcı eklendi
+      if (!apifyResponse.ok) {
+        const errorText = await apifyResponse.text();
+        console.error(`APIFY FETCH ERROR - Status: ${apifyResponse.status}, Details: ${errorText}`);
+      } else {
+        const apifyData = await apifyResponse.json();
+        scrapedData = JSON.stringify(apifyData);
+      }
     } catch (error) {
       console.error("Apify Fetch Error:", error);
     }
@@ -121,7 +132,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
     RAW DATA SOURCES:
     - Marketplace Scrape (${platform}): ${scrapedData || "No direct link provided"}
     - Web Research: ${searchResearch}
-    - Target: ${platform} (${url || type})
+    - Target: ${platform} (${targetInput})
 
     TASK:
     Analyze the raw data above. Cross-reference marketplace facts with web research.
