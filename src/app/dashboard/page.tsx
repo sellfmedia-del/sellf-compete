@@ -28,7 +28,9 @@ export default function DashboardPage() {
         body: JSON.stringify({ 
           url: formData?.url, 
           type: auditType, 
-          platform: formData?.platform || 'General' 
+          platform: formData?.platform || 'General',
+          // HATA ÇÖZÜMÜ: Formdan gelen çıkarılmış dosya metnini backend'e gönderiyoruz
+          documentContent: formData?.documentContent || "" 
         }),
       });
       const data = await response.json();
