@@ -1,4 +1,4 @@
-'use client'; // Etkileşimler için şart
+'use client';
 
 import React, { useState } from 'react';
 import AuditTypeSelector from '@/src/components/dashboard/AuditTypeSelector';
@@ -6,26 +6,45 @@ import AuditInputForm from '@/src/components/dashboard/AuditInputForm';
 import AuditReport from '@/src/components/dashboard/AuditReport';
 
 export default function DashboardPage() {
-  // Durum Yönetimi: 1 (Seçim), 2 (Girdi), 3 (Rapor)
   const [step, setStep] = useState(1); 
   const [auditType, setAuditType] = useState<'product' | 'idea' | null>(null);
+  
+  // Yeni eklenen state'ler
+  const [reportData, setReportData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Ürün mü Fikir mi seçildiğinde tetiklenir
   const handleTypeSelect = (type: 'product' | 'idea') => {
     setAuditType(type);
-    setStep(2); // İkinci adıma (Girdi formuna) geç
+    setStep(2);
   };
 
-  // "Analizi Başlat" butonuna basıldığında tetiklenir
-  const startAudit = () => {
-    setStep(3); // Üçüncü adıma (Rapor ekranına) geç
+  // Motoru çalıştıran ana fonksiyon
+  const startAudit = async (formData: any) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          url: formData?.url, 
+          type: auditType, 
+          platform: formData?.platform || 'General' 
+        }),
+      });
+      const data = await response.json();
+      setReportData(data);
+      setStep(3);
+    } catch (err) {
+      console.error("Audit error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
       <div className="p-8 max-w-5xl mx-auto space-y-12 pb-24">
         
-        {/* --- ADIM 1: SEÇİM EKRANI --- */}
         {step === 1 && (
           <div className="pt-12 animate-in fade-in zoom-in-95 duration-500">
              <div className="text-center mb-12">
@@ -38,22 +57,21 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* --- ADIM 2: GİRDİ EKRANI (Link veya Prompt alanı) --- */}
         {step >= 2 && (
           <div className={`animate-in fade-in slide-in-from-bottom-4 duration-700 ${step === 3 ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
             <AuditInputForm 
               type={auditType!} 
               onBack={() => setStep(1)} 
               onStart={startAudit}
+              isLoading={isLoading} // Loading durumunu forma gönderiyoruz
             />
           </div>
         )}
 
-        {/* --- ADIM 3: RAPOR EKRANI (Analiz Sonucu) --- */}
-        {step === 3 && (
+        {step === 3 && reportData && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="h-px bg-zinc-900 w-full my-16" />
-            <AuditReport />
+            <AuditReport data={reportData} /> {/* Gelen veriyi rapora basıyoruz */}
           </div>
         )}
 
