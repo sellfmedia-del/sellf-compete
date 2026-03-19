@@ -1,13 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
 import { FileUp, Layout, ArrowLeft, Zap, Loader2, CheckCircle2 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
-import mammoth from 'mammoth';
-
-// HATA ÇÖZÜMÜ: Next.js ortamında PDF.js worker'ının sorunsuz çalışması için CDN üzerinden worker'ı tanımlıyoruz
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
 
 interface Props {
   type: 'product' | 'idea';
@@ -39,6 +32,10 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
       let extractedText = '';
 
       if (file.type === 'application/pdf') {
+        // HATA ÇÖZÜMÜ: SSR (Sunucu) tarafında çökmemesi için kütüphaneyi sadece işlem anında dinamik olarak çağırıyoruz
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -51,6 +48,10 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
         file.type === 'application/msword'
       ) {
+        // HATA ÇÖZÜMÜ: Mammoth kütüphanesi de dinamik olarak çağırılıyor
+        const mammothModule = await import('mammoth');
+        const mammoth = mammothModule.default || mammothModule;
+        
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
         extractedText = result.value;
