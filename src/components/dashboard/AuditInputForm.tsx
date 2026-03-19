@@ -1,17 +1,75 @@
 'use client';
-import { useState } from 'react';
-import { FileUp, Layout, ArrowLeft, Zap, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileUp, Layout, ArrowLeft, Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
+
+// HATA ÇÖZÜMÜ: Next.js ortamında PDF.js worker'ının sorunsuz çalışması için CDN üzerinden worker'ı tanımlıyoruz
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+}
 
 interface Props {
   type: 'product' | 'idea';
   onBack: () => void;
-  onStart: (formData: { url: string; platform: string }) => void; // Veri tipi güncellendi
-  isLoading: boolean; // Loading prop eklendi
+  // HATA ÇÖZÜMÜ: onStart fonksiyonuna documentContent parametresi eklendi
+  onStart: (formData: { url: string; platform: string; documentContent?: string }) => void; 
+  isLoading: boolean;
 }
 
 export default function AuditInputForm({ type, onBack, onStart, isLoading }: Props) {
   const [url, setUrl] = useState('');
   const [platform, setPlatform] = useState('Trendyol');
+  
+  // YENİ STATES: Dosya yönetimi ve metin çıkarma durumları
+  const [documentContent, setDocumentContent] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('');
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // YENİ FONKSİYON: PDF ve Word dosyalarından metin okuma motoru
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setIsExtracting(true);
+
+    try {
+      let extractedText = '';
+
+      if (file.type === 'application/pdf') {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          extractedText += pageText + ' ';
+        }
+      } else if (
+        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+        file.type === 'application/msword'
+      ) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        extractedText = result.value;
+      }
+
+      setDocumentContent(extractedText);
+    } catch (error) {
+      console.error("Document extraction error:", error);
+      setFileName("Error reading file");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   return (
     <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-[3rem] p-10 relative overflow-hidden">
@@ -47,13 +105,34 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 items-center">
-          <button disabled={isLoading} className="flex-1 w-full bg-zinc-800/50 border border-zinc-700/50 py-5 rounded-[2rem] flex items-center justify-center gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-all disabled:opacity-20">
-            <FileUp size={20} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Upload Reference (PDF/Word/IMG)</span>
+          {/* YENİ GİZLİ INPUT: Sadece PDF ve Word */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+            className="hidden" 
+          />
+          
+          <button 
+            onClick={handleUploadClick}
+            disabled={isLoading || isExtracting} 
+            className={`flex-1 w-full border py-5 rounded-[2rem] flex items-center justify-center gap-3 transition-all disabled:opacity-20 ${fileName && !isExtracting ? 'bg-orange-500/10 border-orange-500/30 text-orange-500 hover:bg-orange-500/20' : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+          >
+            {isExtracting ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : fileName ? (
+              <CheckCircle2 size={20} />
+            ) : (
+              <FileUp size={20} />
+            )}
+            <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[200px]">
+              {isExtracting ? 'Extracting Text...' : fileName ? fileName : 'Upload Reference (PDF/Word)'}
+            </span>
           </button>
           
           <button 
-            onClick={() => onStart({ url, platform })}
+            onClick={() => onStart({ url, platform, documentContent })}
             disabled={isLoading || !url}
             className="flex-[0.5] w-full bg-white text-black py-5 rounded-full font-black uppercase italic tracking-tight hover:bg-orange-500 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:opacity-50"
           >

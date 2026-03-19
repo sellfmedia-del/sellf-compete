@@ -2,7 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 
-export async function runAuditEngine(url: string, type: string, platform: string) {
+// YENİ ÖZELLİK: documentContent parametresi eklendi (Kullanıcının yüklediği PDF/Word dosyasının çıkarılmış metni)
+export async function runAuditEngine(url: string, type: string, platform: string, documentContent: string = "") {
   let scrapedData = "";
   let searchResearch = "";
   
@@ -156,16 +157,17 @@ export async function runAuditEngine(url: string, type: string, platform: string
     - Marketplace Scrape (${platform}): ${scrapedData || "No direct link provided"}
     - Web Research: ${searchResearch}
     - Target: ${platform} (${targetInput})
+    - User Uploaded Internal Documents: ${documentContent || "None provided by user"}
 
     CRITICAL RULES:
     1. EXCLUDE TARGET: Under no circumstances should the target brand/URL ("${targetInput}") appear in the 'topSellers' list.
     2. 10 SPECIFIC PRODUCTS: 'topSellers' MUST feature EXACTLY 10 distinct competing PRODUCTS dominating the "${searchQuery}" category. Format the title strictly as "Brand Name - Exact Product Name" (e.g., "Maybelline - Instant Anti Age Eraser"). Do NOT list marketplaces.
     3. DEEP SENTIMENT: Extract "feature_requests" (e.g., "Keşke pompalı şişede olsa", "Seyahat boyu lazım"). This is highly valuable data.
-    4. STRATEGIC GAPS: Provide actionable business advice on where the user can find gaps in the market (pricing, product features, marketing).
+    4. STRATEGIC GAPS & INTERNAL DATA: If "User Uploaded Internal Documents" are provided, you MUST cross-reference them with the web research to find strategic gaps. Provide actionable business advice on pricing, product features, and marketing.
     5. SPECIFICS: If Web, focus on traffic leaders. If Physical, focus on store costs, feasibility, and locations.
 
     TASK:
-    Analyze the raw data above. Cross-reference marketplace facts with web research.
+    Analyze the raw data above. Cross-reference marketplace facts, web research, and user documents.
     Return a CLEAN JSON. No markdown.
     
     Structure:
