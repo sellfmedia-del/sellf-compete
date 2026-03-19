@@ -51,7 +51,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
       inputPayload = {
         "startUrls": trendyolUrls,
-        "limit": 10, // HATA ÇÖZÜMÜ: Apify kuralları gereği minimum 10 olmalıdır
+        "limit": 30, // HATA ÇÖZÜMÜ: 10 kaliteli rakip bulabilmek için havuzu 30'a çıkardık
         "getReviews": true, // Sentiment analizi için açtık
         "getQna": false,
         "couponsOnly": false
@@ -70,7 +70,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
       inputPayload = { 
         "categoryUrls": amazonUrls,
         "ensureLoadedProductDescriptionFields": false,
-        "maxItemsPerStartUrl": 5, // Optimized for performance and cost
+        "maxItemsPerStartUrl": 30, // HATA ÇÖZÜMÜ: Havuzu 30'a çıkardık
         "maxProductVariantsAsSeparateResults": 0,
         "maxSearchPagesPerStartUrl": 1, // Restricted to first page only
         "scrapeProductDetails": true,
@@ -111,16 +111,16 @@ export async function runAuditEngine(url: string, type: string, platform: string
     let includeAnswer = false;
 
     if (safePlatform === 'trendyol' || safePlatform === 'amazon') {
-      // Pazar yerleri için çalışan sistemi koruyoruz
+      // Pazar yerleri için makro ekonomi ve kullanıcı talepleri (feature requests) eklendi
       const searchContext = isUrl ? `${searchQuery} category market analysis` : `${searchQuery} product market trends`;
-      tavilyQuery = `${platform} ${searchContext} top selling specific competitor products, customer complaints and commission rates ${currentYear}`;
+      tavilyQuery = `${platform} ${searchContext} top selling specific competitor products, annual sales volume, category growth, customer feature requests and complaints ${currentYear}`;
     } else if (safePlatform === 'physical store' || safePlatform === 'physical') {
       // Fiziksel Mağaza İçin: Kapsamlı yerel perakende analizi, maliyetler, karlı lokasyonlar ve rakiplerin mağaza sayısı
-      tavilyQuery = `"${searchQuery}" Türkiye fiziksel mağaza rakipleri ve spesifik rakip ürün modelleri, en karlı dükkan lokasyonları, rakiplerin tahmini mağaza sayısı, ürünün mağaza satışına uygunluğu, ortalama mağaza kira/işletme maliyetleri ve perakende satış fizibilitesi ${currentYear}`;
+      tavilyQuery = `"${searchQuery}" Türkiye fiziksel mağaza rakipleri ve spesifik rakip ürün modelleri, yıllık perakende pazar hacmi, eksik özellikler (feature requests), karlı dükkan lokasyonları, ürünün mağaza satışına uygunluğu ve ortalama mağaza kira/işletme maliyetleri ${currentYear}`;
       includeAnswer = true;
     } else {
       // My Website / Diğer İçin: Markayı/Ürünü anlama, genel internet karşılaştırması ve en çok trafik alan rakipler
-      tavilyQuery = `"${targetInput}" nedir ve ne satıyor? "${searchQuery}" kategorisinde Türkiye'nin en çok trafik alan rakip websiteleri, pazar lideri online markaların en çok satan spesifik ürünleri (Brand - Product Name), internette genel satılan ürün tiplerinin karşılaştırması ve dijital pazar payı dağılımı ${currentYear}`;
+      tavilyQuery = `"${targetInput}" nedir ve ne satıyor? "${searchQuery}" kategorisinde Türkiye pazar hacmi (TAM), en çok trafik alan rakip websiteleri, pazar lideri online markaların spesifik ürünleri, müşteri feature request yorumları ve dijital pazar payı dağılımı ${currentYear}`;
       includeAnswer = true;
     }
 
@@ -145,7 +145,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
     console.error("Tavily Error:", error);
   }
 
-  // 3. ADIM: GEMINI - Verileri Rapor Formatına Dönüştürme
+  // 3. ADIM: GEMINI - Verileri Rapor Formatına Dönüştürme (ENTERPRISE ŞEMASI)
   const prompt = `
     Current System Date: ${currentDate}
     You are the Master Intelligence Engine for SellfCompete.
@@ -157,22 +157,39 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
     CRITICAL RULES:
     1. EXCLUDE TARGET: Under no circumstances should the target brand/URL ("${targetInput}") appear in the 'topSellers' list.
-    2. SPECIFIC PRODUCTS ONLY: 'topSellers' MUST feature the top 3 distinct competing PRODUCTS dominating the "${searchQuery}" category. Format the title strictly as "Brand Name - Exact Product Name" (e.g., "Maybelline - Instant Anti Age Eraser"). Do NOT just list company/brand names or marketplaces.
-    3. MARKET SHARE: For 'sales_estimate', calculate an estimated market share percentage (e.g., "18% Pazar Payı"). Do not use "N/A".
-    4. WEBSITE SPECIFIC: If platform is Web, deeply understand the product, compare it with internet general sales, and focus on high-traffic competitor websites.
-    5. PHYSICAL STORE SPECIFIC: If platform is Physical, incorporate profitable locations, average store costs, competitor store counts, and product retail feasibility into 'platformInfo' and 'growth'.
+    2. 10 SPECIFIC PRODUCTS: 'topSellers' MUST feature EXACTLY 10 distinct competing PRODUCTS dominating the "${searchQuery}" category. Format the title strictly as "Brand Name - Exact Product Name" (e.g., "Maybelline - Instant Anti Age Eraser"). Do NOT list marketplaces.
+    3. DEEP SENTIMENT: Extract "feature_requests" (e.g., "Keşke pompalı şişede olsa", "Seyahat boyu lazım"). This is highly valuable data.
+    4. STRATEGIC GAPS: Provide actionable business advice on where the user can find gaps in the market (pricing, product features, marketing).
+    5. SPECIFICS: If Web, focus on traffic leaders. If Physical, focus on store costs, feasibility, and locations.
 
     TASK:
     Analyze the raw data above. Cross-reference marketplace facts with web research.
     Return a CLEAN JSON. No markdown.
     
     Structure:
-    1. topSellers: Array(3) {rank, title, sales_estimate}
-    2. sentiment: {likes, dislikes}
-    3. rivals: {mainThreat, closestMatch}
-    4. pricing: {min, max, optimalRange, position}
-    5. platformInfo: {commission, volumeShare, demandLevel}
-    6. growth: {opportunity, threat, revenueForecast, score}
+    {
+      "topSellers": [ 
+        // Array of EXACTLY 10 objects:
+        { "rank": 1, "brand_product": "string", "est_market_share": "string", "price": "string", "key_advantage": "string" }
+      ],
+      "deepSentiment": { 
+        "overall_score": "string", 
+        "top_praises": ["string", "string", "string"], 
+        "critical_pain_points": ["string", "string", "string"], 
+        "feature_requests": ["string", "string", "string"] 
+      },
+      "marketEconomics": { 
+        "category_trend": "string", 
+        "est_annual_volume": "string", 
+        "barrier_to_entry": "string", 
+        "average_commission": "string" 
+      },
+      "strategicGaps": { 
+        "pricing_opportunity": "string", 
+        "product_improvement": "string", 
+        "marketing_angle": "string" 
+      }
+    }
   `;
 
   const result = await model.generateContent(prompt);
