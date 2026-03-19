@@ -2,8 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 
-// YENİ ÖZELLİK: documentContent parametresi eklendi (Kullanıcının yüklediği PDF/Word dosyasının çıkarılmış metni)
-export async function runAuditEngine(url: string, type: string, platform: string, documentContent: string = "") {
+// YENİ ÖZELLİK: documentContent ve language (TR/EN) parametreleri eklendi
+export async function runAuditEngine(url: string, type: string, platform: string, documentContent: string = "", language: string = "English") {
   let scrapedData = "";
   let searchResearch = "";
   
@@ -165,6 +165,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
     3. DEEP SENTIMENT: Extract "feature_requests" (e.g., "Keşke pompalı şişede olsa", "Seyahat boyu lazım"). This is highly valuable data.
     4. STRATEGIC GAPS & INTERNAL DATA: If "User Uploaded Internal Documents" are provided, you MUST cross-reference them with the web research to find strategic gaps. Provide actionable business advice on pricing, product features, and marketing.
     5. SPECIFICS: If Web, focus on traffic leaders. If Physical, focus on store costs, feasibility, and locations.
+    6. LANGUAGE (CRITICAL): The JSON structure and keys MUST remain in English to prevent frontend crashes. However, all string VALUES (analysis, product names, strategic advice, feature requests, sentiment) MUST be generated entirely in ${language}.
 
     TASK:
     Analyze the raw data above. Cross-reference marketplace facts, web research, and user documents.

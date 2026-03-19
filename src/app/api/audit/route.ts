@@ -3,11 +3,11 @@ import { runAuditEngine } from "@/src/lib/services/auditService";
 
 export async function POST(req: Request) {
   try {
-    // YENİ ÖZELLİK: documentContent parametresi API'den karşılanıyor
-    const { url, type, platform, documentContent } = await req.json();
+    // YENİ ÖZELLİK: documentContent ve language parametreleri API'den karşılanıyor
+    const { url, type, platform, documentContent, language } = await req.json();
     
-    // Motor, bu 4 veriyi de içine alarak çalıştırılıyor
-    const reportData = await runAuditEngine(url, type, platform, documentContent);
+    // Motor, bu 5 veriyi de içine alarak çalıştırılıyor
+    const reportData = await runAuditEngine(url, type, platform, documentContent, language);
     
     return NextResponse.json(reportData);
   } catch (error) {

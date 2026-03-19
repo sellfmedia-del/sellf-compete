@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import AuditTypeSelector from '@/src/components/dashboard/AuditTypeSelector';
 import AuditInputForm from '@/src/components/dashboard/AuditInputForm';
 import AuditReport from '@/src/components/dashboard/AuditReport';
+import { Globe } from 'lucide-react'; // Dil ikonu için eklendi
 
 export default function DashboardPage() {
   const [step, setStep] = useState(1); 
@@ -12,6 +13,7 @@ export default function DashboardPage() {
   // Yeni eklenen state'ler
   const [reportData, setReportData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [language, setLanguage] = useState<'Turkish' | 'English'>('English'); // Dil seçimi state'i
 
   const handleTypeSelect = (type: 'product' | 'idea') => {
     setAuditType(type);
@@ -29,8 +31,9 @@ export default function DashboardPage() {
           url: formData?.url, 
           type: auditType, 
           platform: formData?.platform || 'General',
-          // HATA ÇÖZÜMÜ: Formdan gelen çıkarılmış dosya metnini backend'e gönderiyoruz
-          documentContent: formData?.documentContent || "" 
+          documentContent: formData?.documentContent || "",
+          // HATA ÇÖZÜMÜ: Seçilen dil parametresini API'ye gönderiyoruz
+          language: language 
         }),
       });
       const data = await response.json();
@@ -45,6 +48,27 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
+      {/* LİNGUAGE TOGGLE - Sağ üst köşeye sabitlendi */}
+      <div className="fixed top-8 right-8 z-50">
+        <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-1 rounded-full flex items-center gap-1 shadow-2xl">
+          <button 
+            onClick={() => setLanguage('Turkish')}
+            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all ${language === 'Turkish' ? 'bg-orange-500 text-black' : 'text-zinc-500 hover:text-white'}`}
+          >
+            TR
+          </button>
+          <button 
+            onClick={() => setLanguage('English')}
+            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all ${language === 'English' ? 'bg-orange-500 text-black' : 'text-zinc-500 hover:text-white'}`}
+          >
+            EN
+          </button>
+          <div className="px-2 text-zinc-700">
+            <Globe size={14} />
+          </div>
+        </div>
+      </div>
+
       <div className="p-8 max-w-5xl mx-auto space-y-12 pb-24">
         
         {step === 1 && (
@@ -65,7 +89,7 @@ export default function DashboardPage() {
               type={auditType!} 
               onBack={() => setStep(1)} 
               onStart={startAudit}
-              isLoading={isLoading} // Loading durumunu forma gönderiyoruz
+              isLoading={isLoading} 
             />
           </div>
         )}
@@ -73,7 +97,7 @@ export default function DashboardPage() {
         {step === 3 && reportData && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="h-px bg-zinc-900 w-full my-16" />
-            <AuditReport data={reportData} /> {/* Gelen veriyi rapora basıyoruz */}
+            <AuditReport data={reportData} /> 
           </div>
         )}
 
