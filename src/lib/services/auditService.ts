@@ -113,14 +113,14 @@ export async function runAuditEngine(url: string, type: string, platform: string
     if (safePlatform === 'trendyol' || safePlatform === 'amazon') {
       // Pazar yerleri için çalışan sistemi koruyoruz
       const searchContext = isUrl ? `${searchQuery} category market analysis` : `${searchQuery} product market trends`;
-      tavilyQuery = `${platform} ${searchContext} customer complaints and commission rates ${currentYear}`;
+      tavilyQuery = `${platform} ${searchContext} top selling specific competitor products, customer complaints and commission rates ${currentYear}`;
     } else if (safePlatform === 'physical store' || safePlatform === 'physical') {
       // Fiziksel Mağaza İçin: Kapsamlı yerel perakende analizi, maliyetler, karlı lokasyonlar ve rakiplerin mağaza sayısı
-      tavilyQuery = `"${searchQuery}" Türkiye fiziksel mağaza rakipleri, en karlı dükkan lokasyonları, rakiplerin tahmini mağaza sayısı, ürünün mağaza satışına uygunluğu, ortalama mağaza kira/işletme maliyetleri ve perakende satış fizibilitesi ${currentYear}`;
+      tavilyQuery = `"${searchQuery}" Türkiye fiziksel mağaza rakipleri ve spesifik rakip ürün modelleri, en karlı dükkan lokasyonları, rakiplerin tahmini mağaza sayısı, ürünün mağaza satışına uygunluğu, ortalama mağaza kira/işletme maliyetleri ve perakende satış fizibilitesi ${currentYear}`;
       includeAnswer = true;
     } else {
       // My Website / Diğer İçin: Markayı/Ürünü anlama, genel internet karşılaştırması ve en çok trafik alan rakipler
-      tavilyQuery = `"${targetInput}" nedir ve ne satıyor? "${searchQuery}" kategorisinde Türkiye'nin en çok trafik alan rakip websiteleri, pazar lideri online markalar, internette genel satılan ürün tiplerinin karşılaştırması ve dijital pazar payı dağılımı ${currentYear}`;
+      tavilyQuery = `"${targetInput}" nedir ve ne satıyor? "${searchQuery}" kategorisinde Türkiye'nin en çok trafik alan rakip websiteleri, pazar lideri online markaların en çok satan spesifik ürünleri (Brand - Product Name), internette genel satılan ürün tiplerinin karşılaştırması ve dijital pazar payı dağılımı ${currentYear}`;
       includeAnswer = true;
     }
 
@@ -157,7 +157,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
     CRITICAL RULES:
     1. EXCLUDE TARGET: Under no circumstances should the target brand/URL ("${targetInput}") appear in the 'topSellers' list.
-    2. EXTERNAL COMPETITORS ONLY: 'topSellers' MUST feature the top 3 distinct competitor BRANDS or WEBSITES dominating the "${searchQuery}" category. Do NOT list marketplaces (Trendyol, Amazon, etc.) as competitors.
+    2. SPECIFIC PRODUCTS ONLY: 'topSellers' MUST feature the top 3 distinct competing PRODUCTS dominating the "${searchQuery}" category. Format the title strictly as "Brand Name - Exact Product Name" (e.g., "Maybelline - Instant Anti Age Eraser"). Do NOT just list company/brand names or marketplaces.
     3. MARKET SHARE: For 'sales_estimate', calculate an estimated market share percentage (e.g., "18% Pazar Payı"). Do not use "N/A".
     4. WEBSITE SPECIFIC: If platform is Web, deeply understand the product, compare it with internet general sales, and focus on high-traffic competitor websites.
     5. PHYSICAL STORE SPECIFIC: If platform is Physical, incorporate profitable locations, average store costs, competitor store counts, and product retail feasibility into 'platformInfo' and 'growth'.
