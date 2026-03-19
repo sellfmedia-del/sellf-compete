@@ -51,7 +51,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
       inputPayload = {
         "startUrls": trendyolUrls,
-        "limit": 5, // Performans için 5 ürün yeterli
+        "limit": 10, // HATA ÇÖZÜMÜ: Apify kuralları gereği minimum 10 olmalıdır
         "getReviews": true, // Sentiment analizi için açtık
         "getQna": false,
         "couponsOnly": false
