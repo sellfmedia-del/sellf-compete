@@ -115,12 +115,12 @@ export async function runAuditEngine(url: string, type: string, platform: string
       const searchContext = isUrl ? `${searchQuery} category market analysis` : `${searchQuery} product market trends`;
       tavilyQuery = `${platform} ${searchContext} customer complaints and commission rates ${currentYear}`;
     } else if (safePlatform === 'physical store' || safePlatform === 'physical') {
-      // Fiziksel Mağaza / Ürün İçin: Google Haritalar, yerel perakende rakipleri, müşteri deneyimleri
-      tavilyQuery = `"${targetInput}" veya "${searchQuery}" Türkiye fiziksel mağaza ve perakende pazarı yerel ana rakipler (local competitors), Google Haritalar/müşteri yorumları, Şikayetvar deneyimleri, ve fiziksel satış fiyat aralığı (retail pricing) ${currentYear}`;
+      // Fiziksel Mağaza İçin: Kapsamlı yerel perakende analizi, maliyetler, karlı lokasyonlar ve rakiplerin mağaza sayısı
+      tavilyQuery = `"${searchQuery}" Türkiye fiziksel mağaza rakipleri, en karlı dükkan lokasyonları, rakiplerin tahmini mağaza sayısı, ürünün mağaza satışına uygunluğu, ortalama mağaza kira/işletme maliyetleri ve perakende satış fizibilitesi ${currentYear}`;
       includeAnswer = true;
     } else {
-      // My Website / Diğer İçin: Tüm interneti tarayıp dashboard boşluklarını dolduracak özel arama
-      tavilyQuery = `"${targetInput}" veya "${searchQuery}" Türkiye pazarı ana rakipler (competitors), alternatif markalar, Şikayetvar müşteri yorumları, Ekşi Sözlük, ve ortalama pazar satış fiyatı aralığı (pricing) ${currentYear}`;
+      // My Website / Diğer İçin: Markayı/Ürünü anlama, genel internet karşılaştırması ve en çok trafik alan rakipler
+      tavilyQuery = `"${targetInput}" nedir ve ne satıyor? "${searchQuery}" kategorisinde Türkiye'nin en çok trafik alan rakip websiteleri, pazar lideri online markalar, internette genel satılan ürün tiplerinin karşılaştırması ve dijital pazar payı dağılımı ${currentYear}`;
       includeAnswer = true;
     }
 
@@ -154,6 +154,13 @@ export async function runAuditEngine(url: string, type: string, platform: string
     - Marketplace Scrape (${platform}): ${scrapedData || "No direct link provided"}
     - Web Research: ${searchResearch}
     - Target: ${platform} (${targetInput})
+
+    CRITICAL RULES:
+    1. EXCLUDE TARGET: Under no circumstances should the target brand/URL ("${targetInput}") appear in the 'topSellers' list.
+    2. EXTERNAL COMPETITORS ONLY: 'topSellers' MUST feature the top 3 distinct competitor BRANDS or WEBSITES dominating the "${searchQuery}" category. Do NOT list marketplaces (Trendyol, Amazon, etc.) as competitors.
+    3. MARKET SHARE: For 'sales_estimate', calculate an estimated market share percentage (e.g., "18% Pazar Payı"). Do not use "N/A".
+    4. WEBSITE SPECIFIC: If platform is Web, deeply understand the product, compare it with internet general sales, and focus on high-traffic competitor websites.
+    5. PHYSICAL STORE SPECIFIC: If platform is Physical, incorporate profitable locations, average store costs, competitor store counts, and product retail feasibility into 'platformInfo' and 'growth'.
 
     TASK:
     Analyze the raw data above. Cross-reference marketplace facts with web research.
