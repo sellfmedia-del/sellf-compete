@@ -51,7 +51,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
 
       inputPayload = {
         "startUrls": trendyolUrls,
-        "limit": 30, // HATA ÇÖZÜMÜ: 10 kaliteli rakip bulabilmek için havuzu 30'a çıkardık
+        "limit": 20, // HATA ÇÖZÜMÜ: 10 kaliteli rakip bulabilmek için havuzu 30'a çıkardık
         "getReviews": true, // Sentiment analizi için açtık
         "getQna": false,
         "couponsOnly": false
