@@ -36,3 +36,4 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 landing page tamamdır.
 motor takıldı, trendyol çalışıyor.
+amazon da çalışıyor, sadece website ve physical store'da iyileştirme gerekli.
