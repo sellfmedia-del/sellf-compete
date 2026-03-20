@@ -1,28 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+// HATA ÇÖZÜMÜ: Kullanılmayan 'React' importu kaldırıldı, sadece useState bırakıldı
+import { useState } from 'react';
 import AuditTypeSelector from '@/src/components/dashboard/AuditTypeSelector';
 import AuditInputForm from '@/src/components/dashboard/AuditInputForm';
 import AuditReport from '@/src/components/dashboard/AuditReport';
-import { Globe } from 'lucide-react'; // Dil ikonu için eklendi
+import { Globe } from 'lucide-react'; 
 
 export default function DashboardPage() {
   const [step, setStep] = useState(1); 
   const [auditType, setAuditType] = useState<'product' | 'idea' | null>(null);
   
-  // Yeni eklenen state'ler
-  const [reportData, setReportData] = useState(null);
+  // HATA ÇÖZÜMÜ: useState(null) tip belirtilmediği için 'never' hatası veriyordu. <any> eklendi.
+  const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState<'Turkish' | 'English'>('English'); // Dil seçimi state'i
+  const [language, setLanguage] = useState<'Turkish' | 'English'>('English'); 
+  
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
 
   const handleTypeSelect = (type: 'product' | 'idea') => {
     setAuditType(type);
     setStep(2);
   };
 
-  // Motoru çalıştıran ana fonksiyon
   const startAudit = async (formData: any) => {
     setIsLoading(true);
+    setSelectedPlatform(formData?.platform || 'General');
+
     try {
       const response = await fetch('/api/audit', {
         method: 'POST',
@@ -32,7 +36,6 @@ export default function DashboardPage() {
           type: auditType, 
           platform: formData?.platform || 'General',
           documentContent: formData?.documentContent || "",
-          // HATA ÇÖZÜMÜ: Seçilen dil parametresini API'ye gönderiyoruz
           language: language 
         }),
       });
@@ -48,7 +51,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
-      {/* LİNGUAGE TOGGLE - Profil ikonu ile çakışmaması için 'top-28' olarak güncellendi */}
       <div className="fixed top-28 right-8 z-50">
         <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-1 rounded-full flex items-center gap-1 shadow-2xl">
           <button 
@@ -97,7 +99,7 @@ export default function DashboardPage() {
         {step === 3 && reportData && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="h-px bg-zinc-900 w-full my-16" />
-            <AuditReport data={reportData} /> 
+            <AuditReport data={reportData} auditType={auditType} platform={selectedPlatform} /> 
           </div>
         )}
 

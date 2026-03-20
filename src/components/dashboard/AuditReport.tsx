@@ -4,11 +4,14 @@ import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, Th
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 
+// HATA ÇÖZÜMÜ: auditType ve platform eklendi
 interface Props {
-  data: any; // Gelen veriyi kabul ediyoruz
+  data: any; 
+  auditType: string | null;
+  platform: string | null;
 }
 
-export default function AuditReport({ data }: Props) {
+export default function AuditReport({ data, auditType, platform }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   
   // YENİ STATES: Supabase kaydetme durumları
@@ -79,12 +82,12 @@ export default function AuditReport({ data }: Props) {
     setIsSaving(true);
     
     try {
-      // Şablona uygun veriyi hazırlıyoruz (user_id şimdilik yok, anonim kayıt)
+      // HATA ÇÖZÜMÜ: Artık Supabase kurallarına uygun gerçek verileri yolluyoruz
       const payload = {
         raw_data: data,
         status: "completed",
-        input_type: "unknown", // Bu bilgileri Dashboard'dan almadığımız için şimdilik placeholder atıyoruz
-        platform: "unknown"
+        input_type: auditType || "product", // Güvenlik katmanı: boş gelirse 'product' yap
+        platform: platform || "Trendyol" // Güvenlik katmanı
       };
 
       const response = await fetch('/api/save-audit', {
@@ -201,12 +204,12 @@ export default function AuditReport({ data }: Props) {
           </div>
           <div className="space-y-4">
              <div className="p-4 bg-zinc-950 rounded-2xl">
-                <p className="text-[9px] font-black uppercase opacity-60 text-zinc-500">Category Trend</p>
-                <h4 className="font-black text-sm leading-tight italic uppercase text-zinc-300 mt-1">{data.marketEconomics?.category_trend}</h4>
+               <p className="text-[9px] font-black uppercase opacity-60 text-zinc-500">Category Trend</p>
+               <h4 className="font-black text-sm leading-tight italic uppercase text-zinc-300 mt-1">{data.marketEconomics?.category_trend}</h4>
              </div>
              <div className="p-4 bg-zinc-950 rounded-2xl">
-                <p className="text-[9px] font-black uppercase opacity-60 text-zinc-500">Barrier to Entry</p>
-                <h4 className="font-black text-sm leading-tight italic uppercase text-zinc-300 mt-1">{data.marketEconomics?.barrier_to_entry}</h4>
+               <p className="text-[9px] font-black uppercase opacity-60 text-zinc-500">Barrier to Entry</p>
+               <h4 className="font-black text-sm leading-tight italic uppercase text-zinc-300 mt-1">{data.marketEconomics?.barrier_to_entry}</h4>
              </div>
           </div>
         </div>
