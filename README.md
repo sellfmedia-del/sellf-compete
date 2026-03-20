@@ -40,3 +40,4 @@ amazon da çalışıyor, sadece website ve physical store'da iyileştirme gerekl
 I Have a product auditleri harika çalışıyor.
 pdf fonksiyonu eklendi.
 save to history eklendi.
+authentication adımlarının hepsi yapıldı.
