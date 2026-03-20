@@ -2,10 +2,21 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // YENİ: Yönlendirme için eklendi
 import { User, Settings, History, LogOut, ChevronDown } from 'lucide-react';
+import { createClient } from '@/src/utils/supabase/client'; // YENİ: Çıkış işlemi için eklendi
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
+
+  // YENİ: Gerçek Çıkış Fonksiyonu
+  const handleLogOut = async () => {
+    await supabase.auth.signOut(); // Supabase çerezlerini sil
+    router.push('/'); // Doğrudan Landing Page'e dön
+    router.refresh(); // Middleware'in anonim durumu görmesi için sayfayı tazele
+  };
 
   return (
     <header className="h-20 border-b border-zinc-900 bg-[#0a0a0a]/50 backdrop-blur-md sticky top-0 z-50 px-8 flex items-center justify-between">
@@ -43,9 +54,13 @@ export default function Header() {
                 </Link>
               </li>
               <li className="pt-2 mt-2 border-t border-zinc-800">
-                <Link href="/login" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-orange-500 hover:bg-orange-500/10 transition-colors">
+                {/* YENİ: Link yerine onClick tetikleyen bir Button kullanıldı */}
+                <button 
+                  onClick={handleLogOut} 
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-orange-500 hover:bg-orange-500/10 transition-colors"
+                >
                   <LogOut size={16} /> Log Out
-                </Link>
+                </button>
               </li>
             </ul>
           </div>

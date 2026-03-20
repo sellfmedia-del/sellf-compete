@@ -32,7 +32,6 @@ export async function middleware(request: NextRequest) {
   // Rota Tanımlamaları
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard');
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register');
-  const isLandingPage = request.nextUrl.pathname === '/'; // ANA SAYFAYI TANIMLADIK
 
   // KURAL 1: Giriş YAPMAMIŞ biri korunan sayfaya (Dashboard) girmeye çalışırsa
   if (isProtectedRoute && !user) {
@@ -44,12 +43,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // KURAL 3 (YENİ SaaS STANDARDI): Zaten giriş YAPMIŞ biri Ana Sayfaya (Vitrine) gelirse onu direkt çalışma alanına al
-  if (isLandingPage && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // Diğer tüm durumlarda (Giriş yapmamış birinin Ana Sayfayı gezmesi gibi) geçişe izin ver
+  // Ana sayfa (Landing Page) artık herkes için tamamen serbest
   return response;
 }
 
