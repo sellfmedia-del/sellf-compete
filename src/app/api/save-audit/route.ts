@@ -1,12 +1,23 @@
 // Dosya Yolu: app/api/save-audit/route.ts
 import { NextResponse } from "next/server";
-import { supabase } from "@/src/lib/supabase"; 
+// ESKİ SİLİNDİ: import { supabase } from "@/src/lib/supabase"; 
+// YENİ EKLENDİ: Çerezleri okuyabilen sunucu tarafı güvenli istemcimiz
+import { createClient } from "@/src/utils/supabase/server"; 
 
 // KESİN ÇÖZÜM 1: Vercel'in bu API'yi önbelleğe almasını (cache) YASAKLIYORUZ.
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // YENİ: İstemciyi başlat ve oturum açmış kullanıcıyı (çerezlerden) yakala
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // YENİ GÜVENLİK DUVARI: Kullanıcı giriş yapmamışsa veritabanına gitmesini engelle
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+
     const body = await req.json();
     let { raw_data, status, input_type, platform } = body;
 
@@ -21,7 +32,7 @@ export async function POST(req: Request) {
         platform = "Trendyol";
     }
 
-    // Supabase'e güvenli, temizlenmiş veriyi yazıyoruz
+    // Supabase'e güvenli, temizlenmiş veriyi yazıyoruz (Artık user_id dahil!)
     const { data, error } = await supabase
       .from('audits')
       .insert([
@@ -29,7 +40,8 @@ export async function POST(req: Request) {
           raw_data: raw_data, 
           status: status || "completed",
           input_type: input_type,
-          platform: platform
+          platform: platform,
+          user_id: user.id // YENİ: ZORUNLU KILDIĞIN ALAN BURADAN DOLUYOR
         }
       ]);
 
