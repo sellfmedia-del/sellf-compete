@@ -1,11 +1,75 @@
 'use client';
-import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface Props {
   data: any; // Gelen veriyi kabul ediyoruz
 }
 
 export default function AuditReport({ data }: Props) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadWord = async () => {
+    if (!data) return;
+    setIsDownloading(true);
+
+    try {
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({
+              text: "SellfCompete - Market Intelligence Report",
+              heading: HeadingLevel.TITLE,
+              spacing: { after: 400 },
+            }),
+
+            new Paragraph({ text: "1. Category Top Sellers", heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }),
+            ...(data.topSellers || []).map((seller: any, i: number) => new Paragraph({
+              children: [
+                new TextRun({ text: `#${seller.rank || i + 1} ${seller.brand_product}`, bold: true }),
+                new TextRun({ text: `\nShare: ${seller.est_market_share} | Price: ${seller.price}` }),
+                new TextRun({ text: `\nAdvantage: ${seller.key_advantage}` }),
+              ],
+              spacing: { after: 200 }
+            })),
+
+            new Paragraph({ text: "2. Deep Sentiment & Feature Requests", heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }),
+            // HATA ÇÖZÜMÜ: bold özelliği Paragraph'tan alınıp TextRun içine taşındı
+            new Paragraph({ 
+              children: [new TextRun({ text: `Overall Score: ${data.deepSentiment?.overall_score}`, bold: true })], 
+              spacing: { after: 100 } 
+            }),
+            new Paragraph({ 
+              children: [new TextRun({ text: "Feature Requests (Goldmine):", bold: true })] 
+            }),
+            ...(data.deepSentiment?.feature_requests || []).map((req: string) => new Paragraph({ text: `• ${req}`, spacing: { after: 50 } })),
+            
+            new Paragraph({ text: "3. Market Economics", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 100 } }),
+            new Paragraph({ text: `Annual Volume: ${data.marketEconomics?.est_annual_volume}` }),
+            new Paragraph({ text: `Average Commission: ${data.marketEconomics?.average_commission}` }),
+            new Paragraph({ text: `Category Trend: ${data.marketEconomics?.category_trend}` }),
+            new Paragraph({ text: `Barrier to Entry: ${data.marketEconomics?.barrier_to_entry}` }),
+
+            new Paragraph({ text: "4. Strategic Gaps (Actionable Intelligence)", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 100 } }),
+            new Paragraph({ children: [new TextRun({ text: "Pricing Opportunity: ", bold: true }), new TextRun({ text: data.strategicGaps?.pricing_opportunity })], spacing: { after: 100 } }),
+            new Paragraph({ children: [new TextRun({ text: "Product Improvement: ", bold: true }), new TextRun({ text: data.strategicGaps?.product_improvement })], spacing: { after: 100 } }),
+            new Paragraph({ children: [new TextRun({ text: "Marketing Angle: ", bold: true }), new TextRun({ text: data.strategicGaps?.marketing_angle })], spacing: { after: 100 } }),
+          ],
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `SellfCompete_Audit_${Math.floor(Math.random() * 9000) + 1000}.docx`);
+    } catch (error) {
+      console.error("Word Document Generation Error:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (!data) return null;
 
   return (
@@ -145,8 +209,13 @@ export default function AuditReport({ data }: Props) {
 
       {/* AKSİYON BUTONLARI */}
       <div className="flex flex-col md:flex-row gap-4 pt-12 pb-20">
-         <button className="flex-1 bg-white text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5">
-            <FileDown size={20} /> Download PDF Audit
+         <button 
+            onClick={handleDownloadWord}
+            disabled={isDownloading}
+            className="flex-1 bg-white text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:opacity-50"
+         >
+            {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <FileDown size={20} />} 
+            {isDownloading ? 'Generating Word...' : 'Download Word Audit'}
          </button>
          <button className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-800 transition-all flex items-center justify-center gap-3">
             <Save size={20} className="text-orange-500" /> Save to History
