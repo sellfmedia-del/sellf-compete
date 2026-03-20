@@ -39,3 +39,4 @@ motor takıldı, trendyol çalışıyor.
 amazon da çalışıyor, sadece website ve physical store'da iyileştirme gerekli.
 I Have a product auditleri harika çalışıyor.
 pdf fonksiyonu eklendi.
+save to history eklendi.
