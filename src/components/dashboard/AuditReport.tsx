@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2, CheckCircle2 } from 'lucide-react';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -10,6 +10,10 @@ interface Props {
 
 export default function AuditReport({ data }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // YENİ STATES: Supabase kaydetme durumları
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const handleDownloadWord = async () => {
     if (!data) return;
@@ -37,7 +41,6 @@ export default function AuditReport({ data }: Props) {
             })),
 
             new Paragraph({ text: "2. Deep Sentiment & Feature Requests", heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 100 } }),
-            // HATA ÇÖZÜMÜ: bold özelliği Paragraph'tan alınıp TextRun içine taşındı
             new Paragraph({ 
               children: [new TextRun({ text: `Overall Score: ${data.deepSentiment?.overall_score}`, bold: true })], 
               spacing: { after: 100 } 
@@ -67,6 +70,38 @@ export default function AuditReport({ data }: Props) {
       console.error("Word Document Generation Error:", error);
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  // YENİ FONKSİYON: Supabase API'sine veriyi gönderen fonksiyon
+  const handleSaveToHistory = async () => {
+    if (!data || isSaved) return;
+    setIsSaving(true);
+    
+    try {
+      // Şablona uygun veriyi hazırlıyoruz (user_id şimdilik yok, anonim kayıt)
+      const payload = {
+        raw_data: data,
+        status: "completed",
+        input_type: "unknown", // Bu bilgileri Dashboard'dan almadığımız için şimdilik placeholder atıyoruz
+        platform: "unknown"
+      };
+
+      const response = await fetch('/api/save-audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (response.ok) {
+        setIsSaved(true);
+      } else {
+        console.error("Failed to save audit to database");
+      }
+    } catch (error) {
+      console.error("Save to History Error:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -217,8 +252,15 @@ export default function AuditReport({ data }: Props) {
             {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <FileDown size={20} />} 
             {isDownloading ? 'Generating Word...' : 'Download Word Audit'}
          </button>
-         <button className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-800 transition-all flex items-center justify-center gap-3">
-            <Save size={20} className="text-orange-500" /> Save to History
+         
+         {/* YENİ: Save to History butonu */}
+         <button 
+            onClick={handleSaveToHistory}
+            disabled={isSaving || isSaved}
+            className={`flex-1 border border-zinc-800 py-6 rounded-full font-black uppercase italic tracking-tight transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+         >
+            {isSaving ? <Loader2 size={20} className="animate-spin text-orange-500" /> : isSaved ? <CheckCircle2 size={20} className="text-green-500" /> : <Save size={20} className="text-orange-500" />}
+            {isSaving ? 'Saving...' : isSaved ? 'Saved to History' : 'Save to History'}
          </button>
       </div>
     </div>
