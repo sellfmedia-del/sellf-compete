@@ -48,8 +48,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
-      {/* LİNGUAGE TOGGLE - Sağ üst köşeye sabitlendi */}
-      <div className="fixed top-8 right-8 z-50">
+      {/* LİNGUAGE TOGGLE - Profil ikonu ile çakışmaması için 'top-28' olarak güncellendi */}
+      <div className="fixed top-28 right-8 z-50">
         <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-1 rounded-full flex items-center gap-1 shadow-2xl">
           <button 
             onClick={() => setLanguage('Turkish')}
