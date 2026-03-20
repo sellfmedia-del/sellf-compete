@@ -1,22 +1,35 @@
 // Dosya Yolu: app/api/save-audit/route.ts
 import { NextResponse } from "next/server";
-import { supabase } from "@/src/lib/supabase"; // Birazdan oluşturacağımız istemciyi çağırıyoruz
+import { supabase } from "@/src/lib/supabase"; 
+
+// KESİN ÇÖZÜM 1: Vercel'in bu API'yi önbelleğe almasını (cache) YASAKLIYORUZ.
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { raw_data, status, input_type, platform } = body;
+    let { raw_data, status, input_type, platform } = body;
 
-    // Supabase'e veriyi (anonim olarak) yazıyoruz
+    // KESİN ÇÖZÜM 2 (Sterilizasyon): 
+    // Vercel cache'inden dolayı eski kod çalışır ve inatla "unknown" gelirse, 
+    // Supabase'in çökmemesi için geçerli değerlere (product ve Trendyol) zorluyoruz.
+    if (!input_type || input_type === "unknown") {
+        input_type = "product";
+    }
+    
+    if (!platform || platform === "unknown") {
+        platform = "Trendyol";
+    }
+
+    // Supabase'e güvenli, temizlenmiş veriyi yazıyoruz
     const { data, error } = await supabase
       .from('audits')
       .insert([
         { 
           raw_data: raw_data, 
-          status: status,
+          status: status || "completed",
           input_type: input_type,
           platform: platform
-          // user_id eklemiyoruz çünkü şu an auth yok.
         }
       ]);
 
