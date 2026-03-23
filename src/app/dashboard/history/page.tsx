@@ -2,15 +2,23 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { History, Calendar, ExternalLink, Trash2, Tag, Search } from 'lucide-react';
+// Loader2 eklendi (Yükleme animasyonu için)
+import { History, Calendar, ExternalLink, Trash2, Tag, Search, Loader2 } from 'lucide-react';
+// Az önce yazdığımız iş mantığı (Hook) içeri aktarılıyor
+import { useAuditHistory } from '@/src/hooks/useAuditHistory';
 
 export default function AuditHistoryPage() {
-  // Mock Data: İleride Supabase 'audits' tablosundan çekilecek
-  const pastAudits = [
-    { id: 'SC-9921', title: 'Luxury Soy Candles', platform: 'Trendyol', date: 'Mar 18, 2026', score: '+85%' },
-    { id: 'SC-8842', title: 'Ergonomic Desk Chair', platform: 'Amazon', date: 'Mar 12, 2026', score: '+72%' },
-    { id: 'SC-7710', title: 'Wireless Earbuds X', platform: 'n11', date: 'Feb 28, 2026', score: '+91%' },
-  ];
+  // Arka plandaki tüm karmaşık işlemler bu tek satırla UI'a bağlanıyor
+  const { 
+    audits, 
+    filteredAudits, 
+    isLoading, 
+    searchQuery, 
+    setSearchQuery, 
+    handleDelete, 
+    formatDate, 
+    getScore 
+  } = useAuditHistory();
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -24,21 +32,28 @@ export default function AuditHistoryPage() {
           <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3">Access your archived market intelligence</p>
         </div>
 
-        {/* Search Bar Placeholder */}
+        {/* Gerçek Zamanlı Arama Çubuğu */}
         <div className="relative w-full md:w-64 group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-orange-500 transition-colors" size={16} />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search audits..." 
-            className="w-full bg-zinc-900/40 border border-zinc-800 rounded-2xl py-3 pl-12 pr-4 text-xs focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700 font-medium"
+            className="w-full bg-zinc-900/40 border border-zinc-800 rounded-2xl py-3 pl-12 pr-4 text-xs focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700 font-medium text-white"
           />
         </div>
       </div>
 
       {/* HISTORY LIST (Bento Cards) */}
-      <div className="space-y-4">
-        {pastAudits.length > 0 ? (
-          pastAudits.map((audit) => (
+      <div className="space-y-4 min-h-[400px]">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-50">
+            <Loader2 className="animate-spin text-orange-500 mb-4" size={32} />
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Decrypting Archives...</p>
+          </div>
+        ) : filteredAudits.length > 0 ? (
+          filteredAudits.map((audit) => (
             <Link 
               key={audit.id} 
               href={`/dashboard/audit/${audit.id}`} 
@@ -52,12 +67,12 @@ export default function AuditHistoryPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black uppercase italic tracking-tight text-white group-hover:text-orange-500 transition-colors">
-                      {audit.title}
+                      {audit.input_type === 'product' ? 'Product Intelligence' : 'Market Validation'}
                     </h3>
                     <div className="flex items-center gap-3 mt-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                       <span className="flex items-center gap-1"><Tag size={10} /> {audit.platform}</span>
                       <span className="w-1 h-1 bg-zinc-800 rounded-full" />
-                      <span className="flex items-center gap-1"><Calendar size={10} /> {audit.date}</span>
+                      <span className="flex items-center gap-1"><Calendar size={10} /> {formatDate(audit.created_at)}</span>
                     </div>
                   </div>
                 </div>
@@ -66,10 +81,15 @@ export default function AuditHistoryPage() {
                 <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end">
                    <div className="text-right">
                       <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1 leading-none">Growth Score</p>
-                      <span className="text-xl font-black italic text-zinc-400 group-hover:text-white transition-colors">{audit.score}</span>
+                      <span className="text-xl font-black italic text-zinc-400 group-hover:text-white transition-colors">
+                        {getScore(audit.raw_data)}
+                      </span>
                    </div>
                    <div className="flex items-center gap-3">
-                      <button className="p-3 text-zinc-700 hover:text-red-500 transition-colors">
+                      <button 
+                        onClick={(e) => handleDelete(e, audit.id)}
+                        className="p-3 text-zinc-700 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors relative z-20"
+                      >
                         <Trash2 size={18} />
                       </button>
                       <div className="w-10 h-10 border border-zinc-800 rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all duration-500">
@@ -78,9 +98,9 @@ export default function AuditHistoryPage() {
                    </div>
                 </div>
               </div>
-              {/* Subtle background ID tag */}
+              {/* Subtle background ID tag: Supabase UUID'sinin son 6 hanesini gösteriyoruz */}
               <span className="absolute -right-4 -bottom-4 text-7xl font-black text-white/[0.02] italic pointer-events-none group-hover:text-orange-500/[0.03] transition-all">
-                {audit.id}
+                {audit.id.split('-').pop()?.substring(0, 6)}
               </span>
             </Link>
           ))
@@ -91,19 +111,23 @@ export default function AuditHistoryPage() {
         )}
       </div>
 
-      {/* FOOTER STATS (Optional) */}
-      <div className="pt-12 flex justify-center">
-         <div className="bg-zinc-900/40 border border-zinc-800 px-8 py-4 rounded-full flex gap-8">
-            <div className="text-center border-r border-zinc-800 pr-8">
-               <p className="text-[9px] font-black text-zinc-600 uppercase mb-1">Total Audits</p>
-               <p className="text-sm font-black italic">03</p>
-            </div>
-            <div className="text-center">
-               <p className="text-[9px] font-black text-zinc-600 uppercase mb-1">Credits Saved</p>
-               <p className="text-sm font-black italic text-orange-500">$5.70</p>
-            </div>
-         </div>
-      </div>
+      {/* FOOTER STATS (Dinamik) */}
+      {!isLoading && (
+        <div className="pt-12 flex justify-center animate-in fade-in">
+           <div className="bg-zinc-900/40 border border-zinc-800 px-8 py-4 rounded-full flex gap-8">
+              <div className="text-center border-r border-zinc-800 pr-8">
+                 <p className="text-[9px] font-black text-zinc-600 uppercase mb-1">Total Audits</p>
+                 <p className="text-sm font-black italic">{audits.length < 10 ? `0${audits.length}` : audits.length}</p>
+              </div>
+              <div className="text-center">
+                 <p className="text-[9px] font-black text-zinc-600 uppercase mb-1">Credits Saved</p>
+                 <p className="text-sm font-black italic text-orange-500">
+                    ${(audits.length * 1.90).toFixed(2)}
+                 </p>
+              </div>
+           </div>
+        </div>
+      )}
 
     </div>
   );
