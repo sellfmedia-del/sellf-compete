@@ -123,7 +123,7 @@ export async function runArenaEngine(
   // ==========================================
   // 3. ADIM: GEMINI (Fiyat Zenginleştirme)
   // ==========================================
-  const model = genAI.getGenerativeModel({ model: "gemini-3-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
   const prompt = `
     You are the Master Intelligence Engine for SellfCompete's 'Arena' Tracker.
