@@ -15,11 +15,26 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+    // 1. KİMLİK KONTROLÜ
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized. Please log in.' }, { status: 401 });
     }
 
-    // YENİ: Sahte bekleme silindi. Gerçek AI ve Scraper motorunu çalıştırıyoruz!
+    // 2. KREDİ KONTROLÜ (Pre-flight Check)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .single();
+
+    // Kredi yoksa Apify ve Gemini motorlarını hiç yormadan kapıdan çevir
+    if (!profile || profile.credits <= 0) {
+      return NextResponse.json({ 
+        error: "Insufficient credits. Please upgrade your plan." 
+      }, { status: 403 });
+    }
+
+    // 3. AI VE SCRAPER MOTORUNU ÇALIŞTIR (Maliyetin oluştuğu an)
     const baselineData = await runArenaEngine(
       productLink, 
       platform, 
@@ -28,6 +43,7 @@ export async function POST(req: Request) {
       competitorProducts
     );
 
+    // 4. VERİTABANINA KAYIT
     const { data: insertedData, error: insertError } = await supabase
       .from('user_products')
       .insert([
@@ -48,6 +64,14 @@ export async function POST(req: Request) {
     if (insertError) {
       console.error("Supabase Insert Error:", insertError);
       return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    // 5. KREDİ DÜŞÜŞÜ (Kayıt başarıyla oluştuktan SONRA krediyi tahsil et)
+    if (insertedData) {
+      await supabase
+        .from('profiles')
+        .update({ credits: profile.credits - 1 })
+        .eq('id', user.id);
     }
 
     return NextResponse.json({ success: true, data: insertedData }, { status: 200 });
