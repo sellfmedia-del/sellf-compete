@@ -54,13 +54,17 @@ export async function runArenaEngine(
       break;
 
     case 'website':
-      // YENİ: 'Website' seçilirse N/A dönmesin diye Google Shopping ekledik
-      actorId = "epctex~google-shopping-scraper"; 
+      // YENİ: damilo/google-shopping-apify scraper'ı ve özel JSON yapısı entegre edildi
+      actorId = "damilo~google-shopping-apify"; 
       inputPayload = { 
-        "queries": allTargetUrls, 
-        "maxItemsPerQuery": 10, 
-        "country": "TR",
-        "language": "tr"
+        "country": "tr",
+        "date_range": "anytime",
+        "language": "tr",
+        "max_pages": 1,
+        "num": "10",
+        // "query": "dogs" yerine dinamik olarak hedef girdi/ürün linklerini aratıyoruz
+        "query": allTargetUrls.join(" "), 
+        "sponsored": false
       };
       break;
   }
