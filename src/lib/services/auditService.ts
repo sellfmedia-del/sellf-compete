@@ -1,3 +1,4 @@
+// Dosya Yolu: src/lib/services/auditService.ts (Projene göre yolu teyit et)
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
@@ -197,9 +198,34 @@ export async function runAuditEngine(url: string, type: string, platform: string
     }
   `;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+  // YENİ: Katı Fallback Mekanizması
+  let text = "";
+  const maxRetries = 3;
+  let currentModelName = "gemini-2.5-pro"; // Ana model
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      // Sadece 3. ve son denemede Flash'a geç
+      if (i === maxRetries - 1) {
+        currentModelName = "gemini-2.5-flash";
+        console.warn(`[System Alert] Primary model unavailable. Engaging fallback: ${currentModelName}`);
+      }
+
+      const finalModel = genAI.getGenerativeModel({ model: currentModelName });
+      const result = await finalModel.generateContent(prompt);
+      const response = await result.response;
+      text = response.text();
+      break; 
+    } catch (error: any) {
+      if (error?.status === 503 && i < maxRetries - 1) {
+        const waitTime = (i + 1) * 2000; 
+        console.warn(`[API Traffic] 503 High Demand on ${currentModelName}. Retrying in ${waitTime}ms... (Attempt ${i + 1} of ${maxRetries})`);
+        await new Promise(res => setTimeout(res, waitTime));
+      } else {
+        throw error; 
+      }
+    }
+  }
   
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }

@@ -124,8 +124,6 @@ export async function runArenaEngine(
   // ==========================================
   // 3. ADIM: GEMINI (Fiyat Zenginleştirme & Retry Zırhı)
   // ==========================================
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-
   const prompt = `
     You are the Master Intelligence Engine for SellfCompete's 'Arena' Tracker.
     
@@ -186,23 +184,31 @@ export async function runArenaEngine(
     }
   `;
 
-  // YENİ: 503 Hatasına Karşı 3 Kere Yeniden Deneme (Retry) Mekanizması
+  // YENİ: Katı Fallback Mekanizması
   let text = "";
-  let maxRetries = 3;
+  const maxRetries = 3;
+  let currentModelName = "gemini-2.5-pro"; // Ana model
   
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const result = await model.generateContent(prompt);
+      // Sadece 3. ve son denemede Flash'a geç
+      if (i === maxRetries - 1) {
+        currentModelName = "gemini-2.5-flash";
+        console.warn(`[System Alert] Primary model unavailable. Engaging fallback: ${currentModelName}`);
+      }
+
+      const finalModel = genAI.getGenerativeModel({ model: currentModelName });
+      const result = await finalModel.generateContent(prompt);
       const response = await result.response;
       text = response.text();
-      break; // Başarılı olursa döngüden çık
+      break; 
     } catch (error: any) {
       if (error?.status === 503 && i < maxRetries - 1) {
-        const waitTime = (i + 1) * 2000; // 2s, 4s şeklinde artan bekleme
-        console.warn(`[Gemini API] 503 High Demand. Retrying in ${waitTime}ms... (Attempt ${i + 1} of ${maxRetries})`);
+        const waitTime = (i + 1) * 2000; 
+        console.warn(`[API Traffic] 503 High Demand on ${currentModelName}. Retrying in ${waitTime}ms... (Attempt ${i + 1} of ${maxRetries})`);
         await new Promise(res => setTimeout(res, waitTime));
       } else {
-        throw error; // Diğer hataları veya deneme hakkı bittiyse fırlat
+        throw error; 
       }
     }
   }
