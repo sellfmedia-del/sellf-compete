@@ -22,7 +22,7 @@ export async function runArenaEngine(
   const allTargetUrls = [productLink, ...competitorProducts].filter(Boolean);
 
   // ==========================================
-  // 1. ADIM: APIFY SCRAPER (Senin zırhlı kodundan alınan payloadlar)
+  // 1. ADIM: APIFY SCRAPER 
   // ==========================================
   let actorId = "";
   let inputPayload = {};
@@ -32,7 +32,7 @@ export async function runArenaEngine(
       actorId = "fatihtahta~trendyol-scraper";
       inputPayload = {
         "startUrls": allTargetUrls, 
-        "limit": 20, // Eski kodundaki gibi 20'ye çıkardık
+        "limit": 20, 
         "getReviews": true, 
         "getQna": false,
         "couponsOnly": false
@@ -44,7 +44,7 @@ export async function runArenaEngine(
       inputPayload = { 
         "categoryUrls": allTargetUrls.map(url => ({ "url": url })),
         "ensureLoadedProductDescriptionFields": false,
-        "maxItemsPerStartUrl": 30, // YENİ: Eski kodundaki kritik sınır
+        "maxItemsPerStartUrl": 30, 
         "maxProductVariantsAsSeparateResults": 0,
         "maxSearchPagesPerStartUrl": 1,
         "scrapeProductDetails": true,
@@ -54,7 +54,6 @@ export async function runArenaEngine(
       break;
 
     case 'website':
-      // YENİ: damilo/google-shopping-apify scraper'ı ve özel JSON yapısı entegre edildi
       actorId = "damilo~google-shopping-apify"; 
       inputPayload = { 
         "country": "tr",
@@ -62,7 +61,6 @@ export async function runArenaEngine(
         "language": "tr",
         "max_pages": 1,
         "num": "10",
-        // "query": "dogs" yerine dinamik olarak hedef girdi/ürün linklerini aratıyoruz
         "query": allTargetUrls.join(" "), 
         "sponsored": false
       };
@@ -77,7 +75,6 @@ export async function runArenaEngine(
         body: JSON.stringify(inputPayload)
       });
 
-      // YENİ: Eski kodundaki sessiz hata (Silent Failure) yakalayıcı
       if (!apifyResponse.ok) {
         const errorText = await apifyResponse.text();
         console.error(`APIFY FETCH ERROR - Status: ${apifyResponse.status}, Details: ${errorText}`);
@@ -92,7 +89,7 @@ export async function runArenaEngine(
   }
 
   // ==========================================
-  // 2. ADIM: TAVILY (Senin detaylı analiz promptların)
+  // 2. ADIM: TAVILY 
   // ==========================================
   try {
     let tavilyQuery = "";
@@ -125,7 +122,7 @@ export async function runArenaEngine(
   }
 
   // ==========================================
-  // 3. ADIM: GEMINI (Fiyat Zenginleştirme)
+  // 3. ADIM: GEMINI (Fiyat Zenginleştirme & Retry Zırhı)
   // ==========================================
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
@@ -189,9 +186,26 @@ export async function runArenaEngine(
     }
   `;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+  // YENİ: 503 Hatasına Karşı 3 Kere Yeniden Deneme (Retry) Mekanizması
+  let text = "";
+  let maxRetries = 3;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      text = response.text();
+      break; // Başarılı olursa döngüden çık
+    } catch (error: any) {
+      if (error?.status === 503 && i < maxRetries - 1) {
+        const waitTime = (i + 1) * 2000; // 2s, 4s şeklinde artan bekleme
+        console.warn(`[Gemini API] 503 High Demand. Retrying in ${waitTime}ms... (Attempt ${i + 1} of ${maxRetries})`);
+        await new Promise(res => setTimeout(res, waitTime));
+      } else {
+        throw error; // Diğer hataları veya deneme hakkı bittiyse fırlat
+      }
+    }
+  }
   
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
