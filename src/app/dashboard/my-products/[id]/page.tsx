@@ -15,11 +15,31 @@ export default function ProductDetailArenaPage() {
   const [activeTab, setActiveTab] = useState<'my_product' | 'competitors' | 'brands' | 'market'>('my_product');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Bu fonksiyonu bir sonraki adımda API'ye bağlayacağız
+  // YENİ: Gerçek API Bağlantısı (Delta Engine & Credit System)
   const handleUpdateData = async () => {
     setIsUpdating(true);
-    // API isteği buraya gelecek...
-    setTimeout(() => setIsUpdating(false), 2000); 
+    try {
+      const response = await fetch('/api/arena/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Update failed");
+      }
+      
+      // Veri başarıyla güncellendi ve kredi düşüldü. Sayfayı yenileyerek yeni Delta'yı ekrana basıyoruz.
+      window.location.reload(); 
+      
+    } catch (error: any) {
+      console.error("Error updating arena data:", error);
+      alert(error.message || "Failed to update data. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   if (isLoading) {
@@ -144,7 +164,10 @@ export default function ProductDetailArenaPage() {
                      <p className="text-[9px] text-zinc-600 mt-1">Awaiting next update</p>
                    </>
                  ) : (
-                   <p className="text-xs text-zinc-500">Delta metrics will appear here.</p>
+                   <>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Price Drop / Alert</p>
+                     <h3 className="text-xl font-bold text-orange-500">{latest_data?.my_product?.discount_rate || "Stable"}</h3>
+                   </>
                  )}
               </div>
             </div>
