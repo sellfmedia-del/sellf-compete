@@ -8,7 +8,8 @@ export async function runArenaEngine(
   platform: string, 
   category: string, 
   competitorBrands: string[], 
-  competitorProducts: string[]
+  competitorProducts: string[],
+  previousData: any = null // Delta için kapımız açık kalıyor
 ) {
   let scrapedData = "";
   let marketResearch = "";
@@ -21,7 +22,7 @@ export async function runArenaEngine(
   const allTargetUrls = [productLink, ...competitorProducts].filter(Boolean);
 
   // ==========================================
-  // 1. ADIM: APIFY SCRAPER (Ürün ve Fiyat Verileri)
+  // 1. ADIM: APIFY SCRAPER (Senin zırhlı kodundan alınan payloadlar)
   // ==========================================
   let actorId = "";
   let inputPayload = {};
@@ -31,7 +32,7 @@ export async function runArenaEngine(
       actorId = "fatihtahta~trendyol-scraper";
       inputPayload = {
         "startUrls": allTargetUrls, 
-        "limit": 10, 
+        "limit": 20, // Eski kodundaki gibi 20'ye çıkardık
         "getReviews": true, 
         "getQna": false,
         "couponsOnly": false
@@ -42,9 +43,24 @@ export async function runArenaEngine(
       actorId = "junglee~free-amazon-product-scraper"; 
       inputPayload = { 
         "categoryUrls": allTargetUrls.map(url => ({ "url": url })),
+        "ensureLoadedProductDescriptionFields": false,
+        "maxItemsPerStartUrl": 30, // YENİ: Eski kodundaki kritik sınır
+        "maxProductVariantsAsSeparateResults": 0,
+        "maxSearchPagesPerStartUrl": 1,
         "scrapeProductDetails": true,
         "scrapeProductVariantPrices": false,
         "useCaptchaSolver": false
+      };
+      break;
+
+    case 'website':
+      // YENİ: 'Website' seçilirse N/A dönmesin diye Google Shopping ekledik
+      actorId = "epctex~google-shopping-scraper"; 
+      inputPayload = { 
+        "queries": allTargetUrls, 
+        "maxItemsPerQuery": 10, 
+        "country": "TR",
+        "language": "tr"
       };
       break;
   }
@@ -57,23 +73,32 @@ export async function runArenaEngine(
         body: JSON.stringify(inputPayload)
       });
 
-      if (apifyResponse.ok) {
+      // YENİ: Eski kodundaki sessiz hata (Silent Failure) yakalayıcı
+      if (!apifyResponse.ok) {
+        const errorText = await apifyResponse.text();
+        console.error(`APIFY FETCH ERROR - Status: ${apifyResponse.status}, Details: ${errorText}`);
+      } else {
         const apifyData = await apifyResponse.json();
-        // Veriyi küçültmek için sadece ilk 20 öğeyi alıyoruz
         const slicedData = Array.isArray(apifyData) ? apifyData.slice(0, 20) : apifyData;
         scrapedData = JSON.stringify(slicedData);
       }
     } catch (error) {
-      console.error("Apify Fetch Error:", error);
+      console.error("Apify Fetch Catch Error:", error);
     }
   }
 
   // ==========================================
-  // 2. ADIM: TAVILY (Pazar ve Marka Hacmi)
+  // 2. ADIM: TAVILY (Senin detaylı analiz promptların)
   // ==========================================
   try {
-    const brandsContext = competitorBrands.length > 0 ? `Key competitors: ${competitorBrands.join(', ')}.` : '';
-    const tavilyQuery = `"${category}" category e-commerce market trends on ${platform} Turkey ${currentYear}. ${brandsContext} Search for market growth momentum, top searched keywords, customer complaints, and traffic/follower estimates for these brands.`;
+    let tavilyQuery = "";
+    const brandsContext = competitorBrands.length > 0 ? `Target Brands: ${competitorBrands.join(', ')}.` : '';
+    
+    if (safePlatform === 'trendyol' || safePlatform === 'amazon') {
+      tavilyQuery = `${platform} ${category} market trends, top selling specific competitor products, annual sales volume, customer feature requests and complaints ${currentYear}. ${brandsContext}`;
+    } else {
+      tavilyQuery = `"${category}" category Turkey market size (TAM), top traffic competitor websites, customer complaints and digital market share ${currentYear}. ${brandsContext}`;
+    }
 
     const tavilyResponse = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -96,9 +121,9 @@ export async function runArenaEngine(
   }
 
   // ==========================================
-  // 3. ADIM: GEMINI (Veriyi Rapor Formatına Dönüştürme)
+  // 3. ADIM: GEMINI (Fiyat Zenginleştirme)
   // ==========================================
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro" });
 
   const prompt = `
     You are the Master Intelligence Engine for SellfCompete's 'Arena' Tracker.
@@ -109,9 +134,14 @@ export async function runArenaEngine(
     - Scraped Product Data: ${scrapedData || "No scrape data. Rely on research."}
     - Web Research: ${marketResearch}
     - Competitor Brands: ${competitorBrands.join(', ')}
+    
+    PREVIOUS DATA (For Delta Calculation):
+    ${previousData ? JSON.stringify(previousData) : "This is Day 0 (Baseline). Set 'discount_rate', 'sentiment_shift', 'sales_growth_estimate' to 'Baseline'."}
 
-    TASK: Analyze the raw data and output a STRICT JSON object representing Day 0 (Baseline) tracking.
-    Do NOT include markdown formatting (\`\`\`json etc.).
+    CRITICAL INSTRUCTIONS:
+    1. Look deeply into "Scraped Product Data" for exact prices and reviews. 
+    2. If exact data is missing, use "Web Research" to estimate realistic values for the category. NEVER just output "N/A" for prices or "0" for reviews unless absolutely necessary.
+    3. Output MUST be a STRICT JSON object with no markdown.
     
     EXPECTED JSON STRUCTURE:
     {
@@ -122,7 +152,7 @@ export async function runArenaEngine(
         "discount_rate": "string",
         "new_reviews_count": 0,
         "recent_10_reviews": ["string"],
-        "sentiment_ratio": "string (e.g. 80% Positive, 20% Negative)",
+        "sentiment_ratio": "string",
         "sales_growth_estimate": "string"
       },
       "competitor_products": [
@@ -133,7 +163,7 @@ export async function runArenaEngine(
           "average_rating": 0,
           "recent_10_reviews": ["string"],
           "sentiment_shift": "string",
-          "price_vs_category_avg": "string (e.g. 10% below average)",
+          "price_vs_category_avg": "string",
           "badges_and_campaigns": ["string"]
         }
       ],
@@ -142,14 +172,14 @@ export async function runArenaEngine(
           "name": "Brand Name",
           "store_rating": "string",
           "general_campaigns": ["string"],
-          "new_product_variations": ["string (e.g. ML, size, packaging updates)"],
+          "new_product_variations": ["string"],
           "estimated_traffic_or_followers": "string"
         }
       ],
       "market_intelligence": {
         "top_3_keywords": ["string", "string", "string"],
-        "market_momentum": "string (e-commerce volume and general growth)",
-        "top_5_complaints_and_insights": ["string (Bullet point + Insight)", "string", "string", "string", "string"],
+        "market_momentum": "string",
+        "top_5_complaints_and_insights": ["string"],
         "top_3_market_leaders": ["string", "string", "string"]
       }
     }
