@@ -11,11 +11,9 @@ export default function MyProductsPage() {
   const router = useRouter();
   const { products, isLoading, refreshProducts } = useMyProducts();
 
-  // Form State'leri
   const [isFormExpanded, setIsFormExpanded] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Yeni: API'ye istek atarken bekleme durumu
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
-  // Input State'leri
   const [productLink, setProductLink] = useState('');
   const [platform, setPlatform] = useState('trendyol');
   const [category, setCategory] = useState('');
@@ -26,9 +24,7 @@ export default function MyProductsPage() {
     setIsFormExpanded(true);
   };
 
-  // Yeni Ürün Ekleme (Initialize) Fonksiyonu
   const handleInitializeTracker = async () => {
-    // Basit validasyon: Link ve kategori boş olmasın
     if (!productLink || !category) {
       alert("Please provide at least your product link and category.");
       return;
@@ -37,7 +33,6 @@ export default function MyProductsPage() {
     setIsSubmitting(true);
 
     try {
-      // API'ye veriyi gönderiyoruz
       const response = await fetch('/api/arena/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,7 +40,6 @@ export default function MyProductsPage() {
           productLink,
           platform,
           category,
-          // Virgülle ayrılmış string'i array'e çevirip, boşlukları temizliyoruz
           competitorBrands: competitorBrands.split(',').map(b => b.trim()).filter(Boolean),
           competitorProducts: competitorProducts.split(',').map(p => p.trim()).filter(Boolean),
         }),
@@ -57,17 +51,14 @@ export default function MyProductsPage() {
 
       const { data } = await response.json();
       
-      // Başarılı olursa formu kapat, inputları temizle
       setIsFormExpanded(false);
       setProductLink('');
       setCategory('');
       setCompetitorBrands('');
       setCompetitorProducts('');
 
-      // Sayfayı (veya sadece o ürünün detay sayfasını) yenile
       await refreshProducts();
       
-      // Opsiyonel: Direk yeni açılan ürünün detay sayfasına yönlendir
       if (data && data.id) {
          router.push(`/dashboard/my-products/${data.id}`);
       }
@@ -231,7 +222,8 @@ export default function MyProductsPage() {
                     <Target size={18} className="text-zinc-500 group-hover:text-orange-500 transition-colors" />
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className="px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-full text-[9px] font-black uppercase tracking-widest text-zinc-500 group-hover:border-orange-500/30 transition-colors">
+                    {/* Platform Etiketi Zaten Buradaydı, Rengini Biraz Daha Belirginleştirdik */}
+                    <span className="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-[9px] font-black uppercase tracking-widest text-zinc-300 group-hover:border-orange-500/50 group-hover:text-white transition-colors">
                       {product.platform}
                     </span>
                     <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
@@ -242,13 +234,20 @@ export default function MyProductsPage() {
                 
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">{product.category}</p>
-                  <h3 className="text-xl font-black italic text-white group-hover:text-orange-500 transition-colors line-clamp-1">
-                    {product.latest_data?.my_product?.name || "Tracking Initialized"}
+                  {/* Marka ve Ürün Adı JSON'dan çekilip basılıyor */}
+                  <h3 className="text-xl font-black italic text-white group-hover:text-orange-500 transition-colors line-clamp-2">
+                    {product.latest_data?.my_product?.name || "Analyzing Asset..."}
                   </h3>
+                  {/* YENİ: Rakip Markaların Kartta Görünmesi */}
+                  {product.competitor_brands && product.competitor_brands.length > 0 && (
+                     <p className="text-[10px] text-zinc-500 font-medium mt-3 line-clamp-1 border-t border-zinc-800/50 pt-2">
+                       vs. {product.competitor_brands.join(', ')}
+                     </p>
+                  )}
                 </div>
 
-                <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full border border-zinc-700 flex items-center justify-center group-hover:bg-white group-hover:border-white transition-all">
-                  <ChevronRight size={14} className="text-zinc-500 group-hover:text-black" />
+                <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full border border-zinc-700 flex items-center justify-center group-hover:bg-orange-500 group-hover:border-orange-500 transition-all">
+                  <ChevronRight size={14} className="text-zinc-500 group-hover:text-white" />
                 </div>
               </Link>
             ))}

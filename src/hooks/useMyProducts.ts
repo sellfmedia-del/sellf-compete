@@ -9,9 +9,12 @@ export type UserProduct = {
   product_link: string;
   category: string;
   platform: string;
+  competitor_brands: string[];   // YENİ: Hata veren eksik tanım eklendi
+  competitor_products: string[]; // YENİ: Rakiplerin link dizisi eklendi
   created_at: string;
   updated_at: string;
   latest_data: any;
+  historical_data: any;          // YENİ: Geçmiş veri tanımı eklendi
 };
 
 export function useMyProducts() {
