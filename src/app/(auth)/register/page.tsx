@@ -1,10 +1,12 @@
+// Dosya Yolu: src/app/auth/register/page.tsx (veya ilgili yol)
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Mail, Lock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
+import { initializePaddle, Paddle } from '@paddle/paddle-js';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -12,9 +14,20 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [paddle, setPaddle] = useState<Paddle>();
   
   const router = useRouter();
   const supabase = createClient();
+
+  // Paddle'ı sayfa yüklendiğinde arka planda sessizce başlatıyoruz
+  useEffect(() => {
+    initializePaddle({ 
+      environment: process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as 'sandbox' | 'production', 
+      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN! 
+    }).then((paddleInstance: Paddle | undefined) => {
+      if (paddleInstance) setPaddle(paddleInstance);
+    });
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +50,26 @@ export default function RegisterPage() {
 
       if (data.user) {
         setSuccess(true);
-        // Redirecting to dashboard assuming email confirmation is disabled for MVP
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        
+        // KAYIT BAŞARILI: Yönlendirme iptal, anında Paddle Abonelik ekranı açılıyor
+        if (paddle) {
+          paddle.Checkout.open({
+            items: [{ priceId: "pri_01kmzbj3bxn3jajcwpay4an5nx", quantity: 1 }], // Abonelik Price ID
+            customer: {
+              email: email,
+            },
+            customData: {
+              userId: data.user.id,
+              app: "sellfcompete",
+              planType: "subscription"
+            }
+          });
+        } else {
+          // Fallback: Eğer Paddle yüklenemezse güvenli limana (Account) gönder
+          setTimeout(() => {
+            router.push('/dashboard/account');
+          }, 2000);
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred during registration.");
@@ -70,7 +99,7 @@ export default function RegisterPage() {
                 <CheckCircle2 size={40} className="text-green-500" />
               </div>
               <h2 className="text-xl font-black uppercase tracking-tight text-white">Welcome to the Ecosystem</h2>
-              <p className="text-sm text-zinc-400 font-medium">Preparing your ScaleSuite workspace...</p>
+              <p className="text-sm text-zinc-400 font-medium">Please complete your subscription to unlock your workspace.</p>
               <Loader2 className="animate-spin mx-auto text-orange-500 mt-4" size={24} />
             </div>
           ) : (

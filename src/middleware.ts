@@ -32,6 +32,9 @@ export async function middleware(request: NextRequest) {
   // Rota Tanımlamaları
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard');
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register');
+  
+  // Sadece abone olanların girebileceği kilitli rotalar
+  const isLockedRoute = request.nextUrl.pathname.startsWith('/dashboard/arena') || request.nextUrl.pathname.startsWith('/dashboard/my-products');
 
   // KURAL 1: Giriş YAPMAMIŞ biri korunan sayfaya (Dashboard) girmeye çalışırsa
   if (isProtectedRoute && !user) {
@@ -41,6 +44,19 @@ export async function middleware(request: NextRequest) {
   // KURAL 2: Zaten giriş YAPMIŞ biri Login veya Register sayfasına girmeye çalışırsa
   if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // KURAL 3: (HARD LOCK) Kullanıcı giriş yapmış ama Aboneliği yokken kilitli özelliklere girmeye çalışırsa
+  if (isLockedRoute && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('paddle_status')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.paddle_status !== 'active') {
+      return NextResponse.redirect(new URL('/dashboard/account', request.url));
+    }
   }
 
   // Ana sayfa (Landing Page) artık herkes için tamamen serbest
