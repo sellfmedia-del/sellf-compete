@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
+  // 1. Orijinal yanıt nesnemiz (Supabase çerezleri buraya yazacak)
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -29,38 +30,54 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Rota Tanımlamaları
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard');
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register');
-  
-  // Sadece abone olanların girebileceği kilitli rotalar
   const isLockedRoute = request.nextUrl.pathname.startsWith('/dashboard/arena') || request.nextUrl.pathname.startsWith('/dashboard/my-products');
 
-  // KURAL 1: Giriş YAPMAMIŞ biri korunan sayfaya (Dashboard) girmeye çalışırsa
+  // KURAL 1: Giriş YAPMAMIŞ
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const redirectUrl = new URL('/login', request.url);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    return copyCookies(response, redirectResponse); // Çerezleri koru
   }
 
-  // KURAL 2: Zaten giriş YAPMIŞ biri Login veya Register sayfasına girmeye çalışırsa
+  // KURAL 2: Giriş YAPMIŞ ama Auth sayfasına gidiyor
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const redirectUrl = new URL('/dashboard', request.url);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    return copyCookies(response, redirectResponse);
   }
 
-  // KURAL 3: (HARD LOCK) Kullanıcı giriş yapmış ama Aboneliği yokken kilitli özelliklere girmeye çalışırsa
+  // KURAL 3: (HARD LOCK)
   if (isLockedRoute && user) {
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('paddle_status')
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.paddle_status !== 'active') {
-      return NextResponse.redirect(new URL('/dashboard/account', request.url));
+    // VERCEL LOGLARI İÇİN DEBUGGER (Sorun çıkarsa Vercel > Logs sekmesine bak)
+    console.log(`[Middleware Debug] User: ${user.id}`);
+    console.log(`[Middleware Debug] Profile Data:`, profile);
+    console.log(`[Middleware Debug] Error (if any):`, error?.message);
+
+    if (error || !profile || profile.paddle_status !== 'active') {
+      console.log(`[Middleware Debug] REDIRECTING TO ACCOUNT! Status is: ${profile?.paddle_status}`);
+      const redirectUrl = new URL('/dashboard/account', request.url);
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      return copyCookies(response, redirectResponse); // ÇÖZÜM BURADA: Çerezleri yeni yönlendirmeye taşıyoruz
     }
   }
 
-  // Ana sayfa (Landing Page) artık herkes için tamamen serbest
   return response;
+}
+
+// YARDIMCI FONKSİYON: Çerez Kaybını Önlemek İçin
+function copyCookies(sourceResponse: NextResponse, targetResponse: NextResponse) {
+  sourceResponse.cookies.getAll().forEach((cookie) => {
+    targetResponse.cookies.set(cookie.name, cookie.value);
+  });
+  return targetResponse;
 }
 
 export const config = {
