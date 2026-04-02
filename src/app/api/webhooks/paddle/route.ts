@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       const transactionId = transaction.id;
       
       // İş modeline göre verilecek kredi miktarı (Bunları kendi iş modeline göre değiştirebilirsin)
-      const creditsToAdd = planType === 'subscription' ? 500 : 100; 
+      const creditsToAdd = planType === 'subscription' ? 5 : 1; 
 
       // 5. SUPABASE İŞLEMİ A: Mevcut krediyi bul ve üzerine ekle
       const { data: profile, error: fetchError } = await supabaseAdmin
