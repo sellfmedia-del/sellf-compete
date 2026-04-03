@@ -130,6 +130,8 @@ export async function runArenaEngine(
     RAW DATA:
     - Target Platform: ${platform}
     - Category: ${category}
+    - MY ASSET (MAIN PRODUCT LINK): ${productLink}
+    - COMPETITOR LINKS: ${competitorProducts.join(', ')}
     - Scraped Product Data: ${scrapedData || "No scrape data. Rely on research."}
     - Web Research: ${marketResearch}
     - Competitor Brands: ${competitorBrands.join(', ')}
@@ -138,9 +140,10 @@ export async function runArenaEngine(
     ${previousData ? JSON.stringify(previousData) : "This is Day 0 (Baseline). Set 'discount_rate', 'sentiment_shift', 'sales_growth_estimate' to 'Baseline'."}
 
     CRITICAL INSTRUCTIONS:
-    1. Look deeply into "Scraped Product Data" for exact prices and reviews. 
-    2. If exact data is missing, use "Web Research" to estimate realistic values for the category. NEVER just output "N/A" for prices or "0" for reviews unless absolutely necessary.
-    3. Output MUST be a STRICT JSON object with no markdown.
+    1. Look deeply into "Scraped Product Data". You MUST map the data associated with the "MY ASSET" link strictly to the "my_product" JSON object.
+    2. Map the data associated with the "COMPETITOR LINKS" strictly to the "competitor_products" array. Do not mix them up.
+    3. If exact data is missing, use "Web Research" to estimate realistic values for the category. NEVER just output "N/A" for prices or "0" for reviews unless absolutely necessary.
+    4. Output MUST be a STRICT JSON object with no markdown.
     
     EXPECTED JSON STRUCTURE:
     {
@@ -187,13 +190,13 @@ export async function runArenaEngine(
   // YENİ: Katı Fallback Mekanizması
   let text = "";
   const maxRetries = 3;
-  let currentModelName = "gemini-2.5-pro"; // Ana model
+  let currentModelName = "gemini-2.5-pro"; // Ana model güncellendi
   
   for (let i = 0; i < maxRetries; i++) {
     try {
       // Sadece 3. ve son denemede Flash'a geç
       if (i === maxRetries - 1) {
-        currentModelName = "gemini-2.5-flash";
+        currentModelName = "gemini-2.5-flash"; // Fallback güncellendi
         console.warn(`[System Alert] Primary model unavailable. Engaging fallback: ${currentModelName}`);
       }
 
