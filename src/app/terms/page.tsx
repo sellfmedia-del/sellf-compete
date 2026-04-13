@@ -45,7 +45,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-black italic uppercase text-white mb-4 tracking-tight">5. Governing Law</h2>
-            <p>These Terms shall be governed and construed in accordance with the laws of the Republic of Turkey, specifically within the jurisdiction of Istanbul, without regard to its conflict of law provisions.</p>
+            <p>These Terms shall be governed and construed in accordance with the laws of the Republic of Turkey, specifically within the jurisdiction of Istanbul, without regard to its conflict of law provisions. All SellfSuite products are properties of Konuk Reklam Pazarlama ve Ticaret LTD.</p>
           </section>
         </div>
       </div>
