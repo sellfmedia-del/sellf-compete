@@ -190,13 +190,13 @@ export async function runArenaEngine(
   // YENİ: Katı Fallback Mekanizması
   let text = "";
   const maxRetries = 3;
-  let currentModelName = "gemini-2.5-pro"; // Ana model güncellendi
+  let currentModelName = "gemini-3.1-pro-preview"; // Ana model güncellendi
   
   for (let i = 0; i < maxRetries; i++) {
     try {
       // Sadece 3. ve son denemede Flash'a geç
       if (i === maxRetries - 1) {
-        currentModelName = "gemini-2.5-flash"; // Fallback güncellendi
+        currentModelName = "gemini-3.1-flash-preview"; // Fallback güncellendi
         console.warn(`[System Alert] Primary model unavailable. Engaging fallback: ${currentModelName}`);
       }
 
