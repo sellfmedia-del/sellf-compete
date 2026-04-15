@@ -1,7 +1,7 @@
 // Dosya Yolu: src/app/api/arena/initialize/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/src/utils/supabase/server'; 
-import { runArenaEngine } from '@/src/lib/services/arenaEngine'; // YENİ: Gerçek motoru import ettik
+import { runArenaEngine } from '@/src/lib/services/arenaEngine'; 
 
 export async function POST(req: Request) {
   try {
@@ -66,12 +66,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    // 5. KREDİ DÜŞÜŞÜ (Kayıt başarıyla oluştuktan SONRA krediyi tahsil et)
+    // 5. KREDİ DÜŞÜŞÜ (GÜVENLİ VE ATOMİK TAHSİLAT)
     if (insertedData) {
-      await supabase
-        .from('profiles')
-        .update({ credits: profile.credits - 1 })
-        .eq('id', user.id);
+      const { error: rpcError } = await supabase.rpc('decrement_credits', { 
+        target_user_id: user.id 
+      });
+
+      if (rpcError) {
+        console.error("Initialize Credit Deduction Error:", rpcError);
+      }
     }
 
     return NextResponse.json({ success: true, data: insertedData }, { status: 200 });
