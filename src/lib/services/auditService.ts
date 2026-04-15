@@ -12,7 +12,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
   const currentYear = now.getFullYear();
   const currentDate = now.toDateString();
 
-  const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
   // 0. ADIM: KATEGORİ VE ARAMA KELİMESİ KEŞFİ (The Brain Step)
   // Gemini'ye linki veya fikri verip, pazardaki "anahtar kelimesini" bulduruyoruz.
@@ -201,7 +201,7 @@ export async function runAuditEngine(url: string, type: string, platform: string
   // YENİ: Katı Fallback Mekanizması
   let text = "";
   const maxRetries = 3;
-  let currentModelName = "gemini-3.1-pro-preview"; // Ana model
+  let currentModelName = "gemini-2.5-pro"; // Ana model
 
   for (let i = 0; i < maxRetries; i++) {
     try {
