@@ -1,6 +1,7 @@
 // Dosya Yolu: src/app/api/arena/update/route.ts
 import { NextResponse } from 'next/server';
-import { createClient } from '@/src/utils/supabase/server'; 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from '@/src/utils/supabase/server'; 
 import { runArenaEngine } from '@/src/lib/services/arenaEngine'; 
 
 // --- YARDIMCI FONKSİYON: Fiyat Metninden Rakam Çıkarma ---
@@ -19,14 +20,38 @@ function parsePrice(priceStr: string | undefined): number | null {
 
 export async function POST(req: Request) {
   try {
+    const authHeader = req.headers.get("authorization");
+    const accessToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+
+    const supabase = accessToken
+      ? createSupabaseClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          }
+        )
+      : await createServerClient();
+
     const { productId } = await req.json();
 
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = accessToken
+      ? await supabase.auth.getUser(accessToken)
+      : await supabase.auth.getUser();
 
     // 1. KİMLİK KONTROLÜ
     if (authError || !user) {
