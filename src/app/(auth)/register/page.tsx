@@ -54,7 +54,7 @@ export default function RegisterPage() {
         // KAYIT BAŞARILI: Yönlendirme iptal, anında Paddle Abonelik ekranı açılıyor
         if (paddle) {
           paddle.Checkout.open({
-            items: [{ priceId: "pri_01kmzbj3bxn3jajcwpay4an5nx", quantity: 1 }], // Abonelik Price ID
+            items: [{ priceId: "pri_01kr1kb3qkfnhx7cyzz6h675h3", quantity: 1 }], // Abonelik Price ID
             customer: {
               email: email,
             },
