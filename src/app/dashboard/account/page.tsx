@@ -93,7 +93,7 @@ export default function AccountPage() {
   const handleBuyCredits = () => {
     if (paddle && userId) {
       paddle.Checkout.open({
-        items: [{ priceId: "pri_01kmzbktkcsq4x80fj2rateg2t", quantity: 1 }], // $1.90 Credit Package
+        items: [{ priceId: "pri_01kr1kcpmnjsqadxa8mpd3jhnp", quantity: 1 }], // $1.90 Credit Package
         customer: { email: userEmail },
         customData: {
           userId: userId,
