@@ -43,4 +43,4 @@ save to history eklendi.
 authentication adımlarının hepsi yapıldı.
 ..
 MVP.
-Paddle gerçek account eklendi.
+Paddle gerçek account eklendi..
