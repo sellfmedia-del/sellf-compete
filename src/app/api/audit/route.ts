@@ -4,6 +4,12 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { runAuditEngine } from "@/src/lib/services/auditService";
 import { createClient as createServerClient } from "@/src/utils/supabase/server";
 
+// YENİ: Güvenlik duvarını (RLS) aşıp parayı tahsil etmek için "God Mode" Admin Anahtarı
+const supabaseAdmin = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // DİKKAT: .env dosyasında bu anahtar olmalı
+);
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -11,22 +17,14 @@ export async function POST(req: Request) {
       ? authHeader.slice(7)
       : null;
 
-    // Web client: reads auth session from cookies.
-    // Mobile client: uses Authorization Bearer token.
+    // Normal kullanıcı yetkilerini doğrulamak için standart client
     const supabase = accessToken
       ? createSupabaseClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
           {
-            global: {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            },
-            auth: {
-              persistSession: false,
-              autoRefreshToken: false,
-            },
+            global: { headers: { Authorization: `Bearer ${accessToken}` } },
+            auth: { persistSession: false, autoRefreshToken: false },
           }
         )
       : await createServerClient();
@@ -43,14 +41,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. KREDİ KONTROLÜ (Pre-flight Check)
-    const { data: profile } = await supabase
+    // 2. KREDİ KONTROLÜ (Okuma işlemini Admin ile garantiye alalım)
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('credits')
       .eq('id', user.id)
       .single();
 
-    // Kredi yoksa motoru hiç yormadan kapıdan çevir
     if (!profile || profile.credits <= 0) {
       return NextResponse.json({ 
         error: "Insufficient credits. Please upgrade your plan." 
@@ -59,25 +56,20 @@ export async function POST(req: Request) {
 
     const { url, type, platform, documentContent, language } = await req.json();
     
-    // 3. AI MOTORUNU ÇALIŞTIR (Maliyetin oluştuğu an)
+    // 3. AI MOTORUNU ÇALIŞTIR
     const reportData = await runAuditEngine(url, type, platform, documentContent, language);
     
-    // 4. GÜVENLİ KREDİ DÜŞÜŞÜ (SADECE YAPAY ZEKA BAŞARILIYSA)
+    // 4. KESİN KREDİ DÜŞÜŞÜ (ADMIN YETKİSİYLE RLS'Yİ DELİP GEÇER)
     if (reportData && Object.keys(reportData).length > 0) {
-        try {
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ credits: profile.credits - 1 })
-                .eq('id', user.id);
+        const { error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ credits: profile.credits - 1 })
+            .eq('id', user.id);
 
-            if (updateError) {
-                console.error("[Billing] Kredi düşülemedi:", updateError);
-                // Not: Kullanıcıya hatayı yansıtmıyoruz, rapor üretildi çünkü.
-            } else {
-                console.log(`[Billing] Audit başarıyla tamamlandı. -1 Kredi düşüldü. User: ${user.id}`);
-            }
-        } catch (dbError) {
-             console.error("[Billing] DB Hatası, kredi düşülemedi:", dbError);
+        if (updateError) {
+            console.error("[Billing Admin] Kredi düşülemedi DB Hatası:", updateError);
+        } else {
+            console.log(`[Billing] Audit başarıyla tamamlandı. -1 Kredi düşüldü. User: ${user.id}`);
         }
     }
 
