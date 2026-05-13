@@ -62,12 +62,23 @@ export async function POST(req: Request) {
     // 3. AI MOTORUNU ÇALIŞTIR (Maliyetin oluştuğu an)
     const reportData = await runAuditEngine(url, type, platform, documentContent, language);
     
-    // 4. KREDİ DÜŞÜŞÜ (Rapor başarıyla oluştuktan SONRA krediyi tahsil et)
-    if (reportData) {
-      await supabase
-        .from('profiles')
-        .update({ credits: profile.credits - 1 })
-        .eq('id', user.id);
+    // 4. GÜVENLİ KREDİ DÜŞÜŞÜ (SADECE YAPAY ZEKA BAŞARILIYSA)
+    if (reportData && Object.keys(reportData).length > 0) {
+        try {
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ credits: profile.credits - 1 })
+                .eq('id', user.id);
+
+            if (updateError) {
+                console.error("[Billing] Kredi düşülemedi:", updateError);
+                // Not: Kullanıcıya hatayı yansıtmıyoruz, rapor üretildi çünkü.
+            } else {
+                console.log(`[Billing] Audit başarıyla tamamlandı. -1 Kredi düşüldü. User: ${user.id}`);
+            }
+        } catch (dbError) {
+             console.error("[Billing] DB Hatası, kredi düşülemedi:", dbError);
+        }
     }
 
     return NextResponse.json(reportData);
