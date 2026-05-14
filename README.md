@@ -44,3 +44,4 @@ authentication adımlarının hepsi yapıldı.
 ..
 MVP.
 Paddle gerçek account eklendi..
+Abonelik ve üye silme de tamamlandı.
