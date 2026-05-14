@@ -127,7 +127,7 @@ export default function AccountPage() {
       setUpdateMessage({ type: '', text: '' }); // Varsa eski mesajları temizle
 
       try {
-        const response = await fetch('app/api/account/delete/route.ts', {
+        const response = await fetch('api/account/delete/', {
           method: 'DELETE',
         });
 
