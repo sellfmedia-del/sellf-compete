@@ -5,13 +5,19 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, CreditCard, ShieldAlert, Edit3, Check, Zap, Loader2, AlertCircle } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
 import { initializePaddle, Paddle } from '@paddle/paddle-js';
+import { useRouter } from 'next/navigation'; // YENİ: Yönlendirme için eklendi
 
 export default function AccountPage() {
+  const router = useRouter(); // YENİ: Başarılı silme sonrası ana sayfaya atmak için
+
   // UI & Data States
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState({ type: '', text: '' });
+  
+  // YENİ: Silme İşlemi Durumu (0: Beklemede, 1: Onay Bekliyor, 2: Siliyor)
+  const [deleteStep, setDeleteStep] = useState(0); 
 
   // User States
   const [userEmail, setUserEmail] = useState<string>('');
@@ -68,7 +74,6 @@ export default function AccountPage() {
       return;
     }
 
-    // If editing and they typed a new password, process the update
     if (newPassword.length > 0) {
       setIsUpdating(true);
       const { error } = await supabase.auth.updateUser({
@@ -79,12 +84,11 @@ export default function AccountPage() {
         setUpdateMessage({ type: 'error', text: error.message });
       } else {
         setUpdateMessage({ type: 'success', text: 'Security credentials updated successfully.' });
-        setNewPassword(''); // Clear the field for security
+        setNewPassword(''); 
         setIsEditing(false);
       }
       setIsUpdating(false);
     } else {
-      // If they clicked save without typing anything, just close edit mode
       setIsEditing(false);
     }
   };
@@ -93,7 +97,7 @@ export default function AccountPage() {
   const handleBuyCredits = () => {
     if (paddle && userId) {
       paddle.Checkout.open({
-        items: [{ priceId: "pri_01kr1kcpmnjsqadxa8mpd3jhnp", quantity: 1 }], // $1.90 Credit Package
+        items: [{ priceId: "pri_01kr1kcpmnjsqadxa8mpd3jhnp", quantity: 1 }], 
         customer: { email: userEmail },
         customData: {
           userId: userId,
@@ -101,6 +105,47 @@ export default function AccountPage() {
           planType: "credit" 
         }
       });
+    }
+  };
+
+  // YENİ: 5. HESAP VE ABONELİK YOK ETME MOTORU (Zombi Koruması)
+  const handleDeleteAccount = async () => {
+    // Adım 1: Kullanıcı yanlışlıkla basmasın diye önce onay moduna geçir
+    if (deleteStep === 0) {
+      setDeleteStep(1);
+      
+      // 5 saniye içinde onaylamazsa iptal et (Güvenlik)
+      setTimeout(() => {
+        setDeleteStep((prev) => (prev === 1 ? 0 : prev));
+      }, 5000);
+      return;
+    }
+
+    // Adım 2: Onaylandı, Backend Tüneline Bağlan
+    if (deleteStep === 1) {
+      setDeleteStep(2); // Yükleniyor durumuna al
+      setUpdateMessage({ type: '', text: '' }); // Varsa eski mesajları temizle
+
+      try {
+        const response = await fetch('/api/account/delete', {
+          method: 'DELETE',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Silme başarılı! Oturumu kapat ve ana sayfaya yönlendir
+          await supabase.auth.signOut();
+          router.push('/');
+        } else {
+          // Backend'den hata geldi
+          setUpdateMessage({ type: 'error', text: data.error || 'Failed to terminate account.' });
+          setDeleteStep(0);
+        }
+      } catch (error) {
+        setUpdateMessage({ type: 'error', text: 'Network error. Please try again.' });
+        setDeleteStep(0);
+      }
     }
   };
 
@@ -144,7 +189,7 @@ export default function AccountPage() {
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 transition-colors text-zinc-700" size={18} />
                 <input 
                   type="email" 
-                  disabled={true} // Usually email changes require deeper verification, keeping disabled for now
+                  disabled={true} 
                   value={userEmail || 'Loading...'}
                   className="w-full bg-black/40 border border-zinc-800 rounded-2xl py-4 pl-14 pr-4 text-sm focus:outline-none transition-all opacity-60 font-medium"
                 />
@@ -225,8 +270,20 @@ export default function AccountPage() {
                 <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-1">Permanently terminate your SellfCompete access</p>
              </div>
           </div>
-          <button className="bg-transparent border border-red-900/50 text-red-900 px-10 py-4 rounded-full font-black uppercase italic text-xs hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-300">
-             Delete Account & Data
+          
+          {/* YENİ: DİNAMİK VE GÜVENLİ SİLME BUTONU */}
+          <button 
+            onClick={handleDeleteAccount}
+            disabled={deleteStep === 2}
+            className={`px-10 py-4 rounded-full font-black uppercase italic text-xs transition-all duration-300 flex items-center justify-center gap-2 w-full md:w-auto
+              ${deleteStep === 0 ? 'bg-transparent border border-red-900/50 text-red-900 hover:bg-red-600 hover:text-white hover:border-red-600' : ''}
+              ${deleteStep === 1 ? 'bg-red-600 text-white border-red-600 animate-pulse' : ''}
+              ${deleteStep === 2 ? 'bg-red-950/50 text-red-500/50 border-red-900/50 cursor-not-allowed' : ''}
+            `}
+          >
+            {deleteStep === 0 && 'Delete Account & Data'}
+            {deleteStep === 1 && 'Are You Sure? Click to Confirm'}
+            {deleteStep === 2 && <><Loader2 size={14} className="animate-spin" /> Terminating...</>}
           </button>
         </div>
 
