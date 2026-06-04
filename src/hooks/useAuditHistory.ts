@@ -52,17 +52,35 @@ export function useAuditHistory() {
     setFilteredAudits(filtered);
   }, [searchQuery, audits]);
 
+  // Dosya Yolu: src/hooks/useAuditHistory.ts
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
+    e.stopPropagation(); // YENİ: Tıklama olayının üstteki <Link> bileşenine sıçramasını engeller
     
+    if (!confirm("Are you sure you want to permanently delete this audit report?")) return;
+
     const originalAudits = [...audits];
+    
+    // 1. Optimistic UI: Kullanıcıyı bekletmemek için ekrandan anında kaldır
     setAudits(audits.filter(a => a.id !== id));
     
-    const { error } = await supabase.from('audits').delete().eq('id', id);
+    // 2. KRİTİK DÜZELTME: Sona `.select()` ekliyoruz. 
+    // RLS engeline takılırsak Supabase hata vermez ama geriye boş dizi '[]' döndürür.
+    const { data, error } = await supabase
+      .from('audits')
+      .delete()
+      .eq('id', id)
+      .select();
     
-    if (error) {
-      console.error("Delete failed:", error);
+    // Eğer hata varsa VEYA dönen veri boşsa (RLS engellediyse) geri al (Rollback)
+    if (error || !data || data.length === 0) {
+      console.error("Delete failed or blocked by Supabase RLS:", error);
+      
+      // Arayüzü eski haline döndür
       setAudits(originalAudits);
+      
+      alert("Delete action rejected by database. Ensure your Supabase RLS DELETE policy is active.");
     }
   };
 
