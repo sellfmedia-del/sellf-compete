@@ -43,10 +43,28 @@ export function useMyProducts() {
     setIsLoading(false);
   };
 
+  // YENİ: ARENA ÜRÜN SİLME FONKSİYONU
+  const deleteProduct = async (id: string) => {
+    const { error } = await supabase
+      .from('user_products')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      // Sayfayı tamamen tazelemek yerine yerel state'den anında düşürerek hız kazandırıyoruz
+      setProducts((prev) => prev.filter((product) => product.id !== id));
+      return { success: true };
+    } else {
+      console.error("Error deleting product:", error);
+      return { success: false, error };
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
   }, []);
 
   // API'den yeni ürün eklendiğinde listeyi tazelemek için fetchProducts'ı da dışarı aktarıyoruz
-  return { products, isLoading, refreshProducts: fetchProducts };
+  // YENİ: deleteProduct dışarı aktarılanlar arasına eklendi
+  return { products, isLoading, refreshProducts: fetchProducts, deleteProduct };
 }

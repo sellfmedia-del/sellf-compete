@@ -4,15 +4,19 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Link as LinkIcon, Building2, ShoppingCart, Target, ChevronRight, Activity, Loader2 } from 'lucide-react';
+// YENİ: Trash2 ikonu eklendi
+import { Plus, Search, Link as LinkIcon, Building2, ShoppingCart, Target, ChevronRight, Activity, Loader2, Trash2 } from 'lucide-react';
 import { useMyProducts } from '@/src/hooks/useMyProducts';
 
 export default function MyProductsPage() {
   const router = useRouter();
-  const { products, isLoading, refreshProducts } = useMyProducts();
+  // YENİ: deleteProduct hook'tan çekildi
+  const { products, isLoading, refreshProducts, deleteProduct } = useMyProducts();
 
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); 
+  // YENİ: Silinen ürünü takip etmek için yüklenme state'i
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [productLink, setProductLink] = useState('');
   const [platform, setPlatform] = useState('trendyol');
@@ -74,6 +78,22 @@ export default function MyProductsPage() {
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // YENİ: LİNK NAVİGASYONUNU ENGELLEYEN SİLME TETİKLEYİCİSİ
+  const handleDeleteProduct = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); // Kartın Link tetikleyicisini durdurur
+    e.stopPropagation(); // Üst elementlere tıklama olayının yayılmasını keser
+    
+    if (!confirm("Are you sure you want to remove this product from Arena?")) return;
+    
+    setDeletingId(id);
+    const res = await deleteProduct(id);
+    setDeletingId(null);
+
+    if (!res.success) {
+      alert("Failed to delete product from database.");
+    }
   };
 
   return (
@@ -222,7 +242,6 @@ export default function MyProductsPage() {
                     <Target size={18} className="text-zinc-500 group-hover:text-orange-500 transition-colors" />
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    {/* Platform Etiketi Zaten Buradaydı, Rengini Biraz Daha Belirginleştirdik */}
                     <span className="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-[9px] font-black uppercase tracking-widest text-zinc-300 group-hover:border-orange-500/50 group-hover:text-white transition-colors">
                       {product.platform}
                     </span>
@@ -232,19 +251,31 @@ export default function MyProductsPage() {
                   </div>
                 </div>
                 
-                <div>
+                <div className="pr-12"> {/* YENİ: Başlığın butonların üzerine binmemesi için sağ padding eklendi */}
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">{product.category}</p>
-                  {/* Marka ve Ürün Adı JSON'dan çekilip basılıyor */}
                   <h3 className="text-xl font-black italic text-white group-hover:text-orange-500 transition-colors line-clamp-2">
                     {product.latest_data?.my_product?.name || "Analyzing Asset..."}
                   </h3>
-                  {/* YENİ: Rakip Markaların Kartta Görünmesi */}
                   {product.competitor_brands && product.competitor_brands.length > 0 && (
                      <p className="text-[10px] text-zinc-500 font-medium mt-3 line-clamp-1 border-t border-zinc-800/50 pt-2">
                        vs. {product.competitor_brands.join(', ')}
                      </p>
                   )}
                 </div>
+
+                {/* YENİ: SİLME BUTONU (Bento/Minimalist Stil & Link Engellemeli) */}
+                <button
+                  onClick={(e) => handleDeleteProduct(e, product.id)}
+                  disabled={deletingId === product.id}
+                  className="absolute bottom-6 right-16 w-8 h-8 rounded-full border border-zinc-800 bg-zinc-950 flex items-center justify-center hover:bg-red-500/10 hover:border-red-500/30 text-zinc-500 hover:text-red-500 transition-all z-20 disabled:opacity-40"
+                  title="Delete Product"
+                >
+                  {deletingId === product.id ? (
+                    <Loader2 size={12} className="animate-spin text-red-500" />
+                  ) : (
+                    <Trash2 size={12} />
+                  )}
+                </button>
 
                 <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full border border-zinc-700 flex items-center justify-center group-hover:bg-orange-500 group-hover:border-orange-500 transition-all">
                   <ChevronRight size={14} className="text-zinc-500 group-hover:text-white" />
