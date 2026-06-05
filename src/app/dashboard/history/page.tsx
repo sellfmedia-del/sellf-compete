@@ -1,3 +1,4 @@
+// Dosya Yolu: src/app/dashboard/history/page.tsx
 'use client';
 
 import React from 'react';
@@ -66,10 +67,17 @@ export default function AuditHistoryPage() {
                     <History size={20} className="text-zinc-500 group-hover:text-orange-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black uppercase italic tracking-tight text-white group-hover:text-orange-500 transition-colors">
-                      {audit.input_type === 'product' ? 'Product Intelligence' : 'Market Validation'}
+                    {/* MÜDAHALE: Veritabanında ürün ismi varsa onu basar, yoksa eski tip fallback başlığa döner */}
+                    <h3 className="text-lg font-black uppercase italic tracking-tight text-white group-hover:text-orange-500 transition-colors line-clamp-1 max-w-md">
+                      {audit.raw_data?.product_name || (audit.input_type === 'product' ? 'Product Intelligence' : 'Market Validation')}
                     </h3>
                     <div className="flex items-center gap-3 mt-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                      {/* Eğer ürün ismi varsa, yanına tipini küçük etiket olarak iliştirir */}
+                      {audit.raw_data?.product_name && (
+                        <span className="text-zinc-600 font-black mr-1">
+                          {audit.input_type === 'product' ? 'PRODUCT' : 'IDEA'}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1"><Tag size={10} /> {audit.platform}</span>
                       <span className="w-1 h-1 bg-zinc-800 rounded-full" />
                       <span className="flex items-center gap-1"><Calendar size={10} /> {formatDate(audit.created_at)}</span>

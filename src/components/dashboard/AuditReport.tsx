@@ -127,7 +127,10 @@ export default function AuditReport({ data, auditType, platform, onReset }: Prop
 
       <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-10">
         <div>
-          <p className="text-orange-500 text-[10px] font-black uppercase tracking-[0.4em] mb-2">Audit Analysis Complete</p>
+          {/* MÜDAHALE: Ürün ismi varsa gösterir yoksa fallback metne düşer */}
+          <p className="text-orange-500 text-[10px] font-black uppercase tracking-[0.4em] mb-2 truncate max-w-xl">
+            {data.product_name ? `ASSET: ${data.product_name}` : 'Audit Analysis Complete'}
+          </p>
           <h2 className="text-4xl font-black tracking-tighter uppercase italic">Market <span className="text-white/20">Intelligence</span> Report</h2>
         </div>
         <div className="text-right text-[10px] font-bold uppercase tracking-widest text-zinc-600">

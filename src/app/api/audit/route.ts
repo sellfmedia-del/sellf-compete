@@ -59,6 +59,33 @@ export async function POST(req: Request) {
     // 3. AI MOTORUNU ÇALIŞTIR
     const reportData = await runAuditEngine(url, type, platform, documentContent, language);
     
+    // MÜDAHALE: ÜRÜN VEYA FİKİR İSMİNİ API KATMANINDA AYIKLAYIP ENJEKTE EDEN MOTOR
+    if (reportData && typeof reportData === 'object') {
+      let productName = "";
+      
+      if (type === 'product' && url) {
+        try {
+          const decodedUrl = decodeURIComponent(url);
+          const urlObj = new URL(decodedUrl);
+          const pathParts = urlObj.pathname.split('/').filter(Boolean);
+          const slug = pathParts.find(p => p.includes('-p-') || p.length > 12) || pathParts[0] || "";
+          
+          if (slug) {
+            productName = slug.split('-p-')[0].replace(/-/g, ' ').replace(/_/g, ' ').toUpperCase();
+          } else {
+            productName = `${platform.toUpperCase()} PRODUCT AUDIT`;
+          }
+        } catch {
+          productName = `${platform.toUpperCase()} PRODUCT AUDIT`;
+        }
+      } else if (type === 'idea' && url) {
+        const words = url.trim().split(/\s+/);
+        productName = words.slice(0, 5).join(' ').toUpperCase() + (words.length > 5 ? '...' : '');
+      }
+
+      reportData.product_name = productName || "UNNAMED INTEL ASSET";
+    }
+
     // 4. KESİN KREDİ DÜŞÜŞÜ (ADMIN YETKİSİYLE RLS'Yİ DELİP GEÇER)
     if (reportData && Object.keys(reportData).length > 0) {
         const { error: updateError } = await supabaseAdmin
