@@ -1,17 +1,21 @@
+// Dosya Yolu: src/components/dashboard/AuditReport.tsx
 'use client';
 import { useState } from 'react';
-import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2, CheckCircle2 } from 'lucide-react';
+// YENİ: ArrowLeft ikonu listeye eklendi
+import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 
 // HATA ÇÖZÜMÜ: auditType ve platform eklendi
+// YENİ: onReset fonksiyonu prop olarak eklendi
 interface Props {
   data: any; 
   auditType: string | null;
   platform: string | null;
+  onReset: () => void; 
 }
 
-export default function AuditReport({ data, auditType, platform }: Props) {
+export default function AuditReport({ data, auditType, platform, onReset }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   
   // YENİ STATES: Supabase kaydetme durumları
@@ -112,6 +116,15 @@ export default function AuditReport({ data, auditType, platform }: Props) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+      
+      {/* YENİ: MENÜYE GERİ DÖNÜŞ VE SIFIRLAMA MOTORU BUTONU */}
+      <button 
+        onClick={onReset} 
+        className="text-zinc-600 hover:text-white transition-colors flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-4"
+      >
+        <ArrowLeft size={14} /> New Audit
+      </button>
+
       <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-10">
         <div>
           <p className="text-orange-500 text-[10px] font-black uppercase tracking-[0.4em] mb-2">Audit Analysis Complete</p>

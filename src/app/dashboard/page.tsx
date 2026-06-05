@@ -1,3 +1,4 @@
+// Dosya Yolu: src/app/dashboard/audit/page.tsx
 'use client';
 
 // HATA ÇÖZÜMÜ: Kullanılmayan 'React' importu kaldırıldı, sadece useState bırakıldı
@@ -99,7 +100,17 @@ export default function DashboardPage() {
         {step === 3 && reportData && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <div className="h-px bg-zinc-900 w-full my-16" />
-            <AuditReport data={reportData} auditType={auditType} platform={selectedPlatform} /> 
+            {/* YENİ: onReset prop'u state makinesini sıfırlayacak şekilde bağlandı */}
+            <AuditReport 
+              data={reportData} 
+              auditType={auditType} 
+              platform={selectedPlatform} 
+              onReset={() => {
+                setStep(1);             // İlk adıma geri dön
+                setAuditType(null);     // Seçimi temizle
+                setReportData(null);    // Eski rapor verisini uçur
+              }}
+            /> 
           </div>
         )}
 
