@@ -113,7 +113,7 @@ export default function LandingPage() {
               { value: '3', label: 'Marketplaces Covered' },
               { value: '10', label: 'Competitor Products Per Audit' },
               { value: '<60s', label: 'Link to Full Report' },
-              { value: 'Gemini 2.5', label: 'AI Engine' },
+              { value: 'SellfScale MAI', label: 'AI Engine' },
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <div className="text-3xl md:text-4xl font-black italic text-white tracking-tighter mb-1">{s.value}</div>
