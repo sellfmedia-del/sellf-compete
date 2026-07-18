@@ -3,6 +3,20 @@ import React from 'react';
 import Link from 'next/link';
 import Navbar from '@/src/components/Navbar'; 
 import { ArrowRight, Shield, Zap, Globe, LayoutGrid, Phone } from 'lucide-react';
+import AuditPreviewMockup from '@/src/components/AuditPreviewMockup';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'SellfCompete — AI-Powered Competitor & Market Intelligence for E-Commerce',
+  description: 'Audit your Trendyol, Amazon, and marketplace competitors in seconds. AI-driven pricing gaps, sentiment analysis, and strategic insights for e-commerce sellers.',
+  openGraph: {
+    title: 'SellfCompete — AI-Powered Competitor & Market Intelligence',
+    description: 'Eliminate guesswork. Audit your competitors with enterprise-grade data and AI-driven insights in seconds.',
+    url: 'https://www.sellfcompete.com',
+    siteName: 'SellfCompete',
+    type: 'website',
+  },
+};
 
 export default function LandingPage() {
   return (
@@ -29,20 +43,27 @@ export default function LandingPage() {
               Eliminate guesswork. Audit your competitors with enterprise-grade data and AI-driven insights in seconds.
             </p>
 
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-              <Link href="/register" className="bg-white text-black px-8 py-4 rounded-full font-semibold hover:bg-zinc-200 transition-all flex items-center gap-2 group">
-                Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
+              <Link href="/trial-signup" className="bg-orange-500 text-black px-8 py-4 rounded-full font-black uppercase italic tracking-tight hover:bg-orange-400 transition-all flex items-center gap-2 group shadow-xl shadow-orange-500/20">
+                Start Free Trial <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              
+
+              <Link href="/register" className="bg-transparent border border-zinc-700 text-white px-6 py-4 rounded-full font-semibold hover:bg-zinc-900 hover:border-zinc-600 transition-all flex items-center gap-2">
+                Get Started
+              </Link>
+
               <Link 
                 href="https://www.sellfmedia.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="bg-transparent border border-zinc-800 px-8 py-4 rounded-full font-medium hover:bg-zinc-900 transition-all text-white"
+                className="text-zinc-500 hover:text-white transition-colors text-sm font-medium underline underline-offset-4 decoration-zinc-700 hover:decoration-orange-500 px-2 py-4"
               >
                 Meet the Team
               </Link>
             </div>
+
+            {/* Göz alıcı audit önizleme mockup'ı — gerçek rapordan bilinçli olarak daha canlı */}
+            <AuditPreviewMockup />
           </div>
         </section>
 
