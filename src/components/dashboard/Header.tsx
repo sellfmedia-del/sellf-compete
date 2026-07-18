@@ -3,17 +3,37 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; 
-// YENİ İKONLAR EKLENDİ: LayoutGrid, Radar, Zap
-import { User, Settings, History, LogOut, ChevronDown, LayoutGrid, Radar, Zap } from 'lucide-react';
+// YENİ İKON: Lock eklendi
+import { User, Settings, History, LogOut, ChevronDown, LayoutGrid, Radar, Zap, Lock } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client'; 
 
 export default function Header() {
   // İki farklı dropdown olacağı için state'leri ayırdık
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
+
+  // YENİ: Trial durumu
+  const [isTrial, setIsTrial] = useState(false);
   
   const router = useRouter();
   const supabase = createClient();
+
+  // YENİ: Trial durumunu çek (sadece My Products linkine kilit ikonu göstermek için)
+  useEffect(() => {
+    const fetchTrialStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_trial')
+        .eq('id', user.id)
+        .single();
+
+      if (data) setIsTrial(data.is_trial);
+    };
+    fetchTrialStatus();
+  }, []);
 
   const handleLogOut = async () => {
     await supabase.auth.signOut(); 
@@ -69,12 +89,28 @@ export default function Header() {
                     onClick={() => setIsNavOpen(false)}
                     className="flex items-start gap-4 p-3 rounded-2xl hover:bg-white/5 transition-colors group border border-transparent hover:border-zinc-800"
                   >
-                    <div className="w-10 h-10 bg-zinc-800/50 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 group-hover:text-blue-500 transition-colors">
+                    <div className="w-10 h-10 bg-zinc-800/50 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 group-hover:text-blue-500 transition-colors relative">
                       <Radar size={18} />
+                      {/* YENİ: Trial kullanıcısına kilit rozeti */}
+                      {isTrial && (
+                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center border-2 border-zinc-900">
+                          <Lock size={10} className="text-black" />
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white mb-0.5">My Products</p>
-                      <p className="text-[10px] font-medium text-zinc-500">Continuous competitor tracking</p>
+                      <p className="text-sm font-bold text-white mb-0.5 flex items-center gap-2">
+                        My Products
+                        {/* YENİ: Trial kullanıcısına metin ipucu */}
+                        {isTrial && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                            Pro
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[10px] font-medium text-zinc-500">
+                        {isTrial ? 'Subscribe to unlock continuous tracking' : 'Continuous competitor tracking'}
+                      </p>
                     </div>
                   </Link>
                 </li>
