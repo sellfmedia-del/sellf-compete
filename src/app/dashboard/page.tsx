@@ -1,23 +1,54 @@
-// Dosya Yolu: src/app/dashboard/audit/page.tsx
+// Dosya Yolu: src/app/dashboard/page.tsx
 'use client';
 
-// HATA ÇÖZÜMÜ: Kullanılmayan 'React' importu kaldırıldı, sadece useState bırakıldı
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuditTypeSelector from '@/src/components/dashboard/AuditTypeSelector';
 import AuditInputForm from '@/src/components/dashboard/AuditInputForm';
 import AuditReport from '@/src/components/dashboard/AuditReport';
-import { Globe } from 'lucide-react'; 
+import { Globe, Lock, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { createClient } from '@/src/utils/supabase/client';
+
+interface Profile {
+  credits: number;
+  is_trial: boolean;
+  trial_ends_at: string | null;
+}
 
 export default function DashboardPage() {
   const [step, setStep] = useState(1); 
   const [auditType, setAuditType] = useState<'product' | 'idea' | null>(null);
   
-  // HATA ÇÖZÜMÜ: useState(null) tip belirtilmediği için 'never' hatası veriyordu. <any> eklendi.
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState<'Turkish' | 'English'>('English'); 
   
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+
+  // YENİ: Profil ve hata state'leri
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
+  const supabase = createClient();
+
+  // YENİ: Sayfa açılışında profili çek (credits, is_trial, trial_ends_at)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('credits, is_trial, trial_ends_at')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile(data as Profile);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleTypeSelect = (type: 'product' | 'idea') => {
     setAuditType(type);
@@ -26,6 +57,7 @@ export default function DashboardPage() {
 
   const startAudit = async (formData: any) => {
     setIsLoading(true);
+    setAuditError(null); // YENİ: önceki hatayı temizle
     setSelectedPlatform(formData?.platform || 'General');
 
     try {
@@ -40,15 +72,33 @@ export default function DashboardPage() {
           language: language 
         }),
       });
+
       const data = await response.json();
+
+      // YENİ: 403 (trial bitti / kredi bitti) durumunu ayrı ele al
+      if (!response.ok) {
+        setAuditError(data.error || 'Something went wrong. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
       setReportData(data);
       setStep(3);
+
+      // YENİ: Kredi düştü, profili tazele (şerit güncellensin)
+      setProfile((prev) => (prev ? { ...prev, credits: prev.credits - 1 } : prev));
     } catch (err) {
       console.error("Audit error:", err);
+      setAuditError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // YENİ: Trial gün hesaplama
+  const daysLeft = profile?.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
@@ -73,6 +123,41 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-8 max-w-5xl mx-auto space-y-12 pb-24">
+
+        {/* YENİ: TRIAL DURUM ŞERİDİ — sadece trial kullanıcısına görünür */}
+        {profile?.is_trial && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-orange-500/10 border border-orange-500/20 rounded-3xl px-6 py-4">
+            <div className="flex items-center gap-3 text-sm font-bold text-orange-500">
+              <Clock size={16} />
+              <span>
+                {profile.credits} of 3 free audits remaining
+                {daysLeft !== null && ` · Trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+              </span>
+            </div>
+            <Link
+              href="/register"
+              className="text-[10px] font-black uppercase tracking-widest bg-orange-500 text-black px-4 py-2 rounded-full hover:bg-orange-400 transition-all"
+            >
+              Upgrade Now
+            </Link>
+          </div>
+        )}
+
+        {/* YENİ: AUDIT HATASI (trial bitti / kredi bitti) */}
+        {auditError && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-red-500/10 border border-red-500/20 rounded-3xl px-6 py-4">
+            <div className="flex items-center gap-3 text-sm font-bold text-red-400">
+              <Lock size={16} />
+              <span>{auditError}</span>
+            </div>
+            <Link
+              href="/register"
+              className="text-[10px] font-black uppercase tracking-widest bg-white text-black px-4 py-2 rounded-full hover:bg-zinc-200 transition-all shrink-0"
+            >
+              Subscribe
+            </Link>
+          </div>
+        )}
         
         {step === 1 && (
           <div className="pt-12 animate-in fade-in zoom-in-95 duration-500">
@@ -105,6 +190,7 @@ export default function DashboardPage() {
               data={reportData} 
               auditType={auditType} 
               platform={selectedPlatform} 
+              isTrial={profile?.is_trial ?? false}
               onReset={() => {
                 setStep(1);             // İlk adıma geri dön
                 setAuditType(null);     // Seçimi temizle

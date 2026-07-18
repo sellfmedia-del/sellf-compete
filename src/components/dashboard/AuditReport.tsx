@@ -2,9 +2,10 @@
 'use client';
 import { useState } from 'react';
 // YENİ: ArrowLeft ikonu listeye eklendi
-import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Target, DollarSign, BarChart3, FileDown, Save, ThumbsUp, ThumbsDown, Loader2, CheckCircle2, ArrowLeft, Lock } from 'lucide-react';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
+import Link from 'next/link';
 
 // HATA ÇÖZÜMÜ: auditType ve platform eklendi
 // YENİ: onReset fonksiyonu prop olarak eklendi
@@ -13,9 +14,10 @@ interface Props {
   auditType: string | null;
   platform: string | null;
   onReset: () => void; 
+  isTrial?: boolean; // YENİ: trial kullanıcısıysa true gelir
 }
 
-export default function AuditReport({ data, auditType, platform, onReset }: Props) {
+export default function AuditReport({ data, auditType, platform, onReset, isTrial = false }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   
   // YENİ STATES: Supabase kaydetme durumları
@@ -263,24 +265,36 @@ export default function AuditReport({ data, auditType, platform, onReset }: Prop
 
       {/* AKSİYON BUTONLARI */}
       <div className="flex flex-col md:flex-row gap-4 pt-12 pb-20">
-         <button 
-            onClick={handleDownloadWord}
-            disabled={isDownloading}
-            className="flex-1 bg-white text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:opacity-50"
-         >
-            {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <FileDown size={20} />} 
-            {isDownloading ? 'Generating Word...' : 'Download Word Audit'}
-         </button>
-         
-         {/* YENİ: Save to History butonu */}
-         <button 
-            onClick={handleSaveToHistory}
-            disabled={isSaving || isSaved}
-            className={`flex-1 border border-zinc-800 py-6 rounded-full font-black uppercase italic tracking-tight transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
-         >
-            {isSaving ? <Loader2 size={20} className="animate-spin text-orange-500" /> : isSaved ? <CheckCircle2 size={20} className="text-green-500" /> : <Save size={20} className="text-orange-500" />}
-            {isSaving ? 'Saving...' : isSaved ? 'Saved to History' : 'Save to History'}
-         </button>
+        {isTrial ? (
+          // TRIAL KULLANICISI: indirme/kaydetme yerine tek bir upgrade CTA'sı
+          <Link
+            href="/register"
+            className="flex-1 bg-orange-500 text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-orange-400 transition-all flex items-center justify-center gap-3 shadow-xl shadow-orange-500/10"
+          >
+            <Lock size={20} />
+            Subscribe to Unlock Word Export & Save
+          </Link>
+        ) : (
+          <>
+            <button 
+              onClick={handleDownloadWord}
+              disabled={isDownloading}
+              className="flex-1 bg-white text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:opacity-50"
+            >
+              {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <FileDown size={20} />} 
+              {isDownloading ? 'Generating Word...' : 'Download Word Audit'}
+            </button>
+            
+            <button 
+              onClick={handleSaveToHistory}
+              disabled={isSaving || isSaved}
+              className={`flex-1 border border-zinc-800 py-6 rounded-full font-black uppercase italic tracking-tight transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-green-500/10 text-green-500 border-green-500/30' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}
+            >
+              {isSaving ? <Loader2 size={20} className="animate-spin text-orange-500" /> : isSaved ? <CheckCircle2 size={20} className="text-green-500" /> : <Save size={20} className="text-orange-500" />}
+              {isSaving ? 'Saving...' : isSaved ? 'Saved to History' : 'Save to History'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
