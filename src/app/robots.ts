@@ -1,4 +1,3 @@
-// Dosya Yolu: src/app/robots.ts
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
@@ -9,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard', '/api', '/(auth)'],
+        disallow: ['/dashboard', '/api'],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
