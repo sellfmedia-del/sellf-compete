@@ -2,6 +2,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Refund Policy — SellfCompete',
+  description: "SellfCompete's 14-day refund policy and how to request a refund.",
+  robots: { index: true, follow: true },
+};
 
 export default function RefundPolicyPage() {
   return (

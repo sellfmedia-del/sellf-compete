@@ -2,6 +2,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms & Conditions — SellfCompete',
+  description: 'The terms and conditions governing your use of SellfCompete.',
+  robots: { index: true, follow: true },
+};
 
 export default function TermsPage() {
   return (

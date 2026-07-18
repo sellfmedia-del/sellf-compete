@@ -8,6 +8,19 @@ import AuditReport from '@/src/components/dashboard/AuditReport';
 import { Globe, Lock, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/src/utils/supabase/client';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'SellfCompete — AI-Powered Competitor & Market Intelligence for E-Commerce',
+  description: 'Audit your Trendyol, Amazon, and marketplace competitors in seconds. AI-driven pricing gaps, sentiment analysis, and strategic insights for e-commerce sellers.',
+  openGraph: {
+    title: 'SellfCompete — AI-Powered Competitor & Market Intelligence',
+    description: 'Eliminate guesswork. Audit your competitors with enterprise-grade data and AI-driven insights in seconds.',
+    url: 'https://www.sellfcompete.com',
+    siteName: 'SellfCompete',
+    type: 'website',
+  },
+};
 
 interface Profile {
   credits: number;

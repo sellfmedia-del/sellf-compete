@@ -2,6 +2,19 @@ import React from 'react';
 import Navbar from '@/src/components/Navbar';
 import { Check, Zap, ArrowRight, BarChart3, ShieldCheck, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Pricing — SellfCompete',
+  description: 'One price, unlimited growth. $22/mo for 5 deep market audits, competitor sentiment analysis, and pricing gap detection. Try free for 7 days.',
+  openGraph: {
+    title: 'SellfCompete Pricing — $22/mo, 5 Deep Market Audits',
+    description: 'Enterprise-grade competitor intelligence for the price of a dinner.',
+    url: 'https://www.sellfcompete.com/pricing',
+    siteName: 'SellfCompete',
+    type: 'website',
+  },
+};
 
 export default function PricingPage() {
   return (

@@ -10,6 +10,19 @@ import {
   Zap,
   Target
 } from 'lucide-react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'How It Works — SellfCompete',
+  description: "From a product link to a 360-degree market audit in seconds. See how SellfCompete's AI engine scrapes, analyzes, and reports on your competition.",
+  openGraph: {
+    title: 'How SellfCompete Works — The AI Market Intelligence Engine',
+    description: 'The clinical breakdown of the SellfCompete engine, from input to audit.',
+    url: 'https://www.sellfcompete.com/how-it-works',
+    siteName: 'SellfCompete',
+    type: 'website',
+  },
+};
 
 export default function HowItWorks() {
   return (
