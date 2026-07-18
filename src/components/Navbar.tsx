@@ -12,6 +12,7 @@ export default function Navbar() {
 
         {/* Orta: Linkler */}
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
+          <Link href="/features" className="hover:text-white transition-colors">Features</Link>
           <Link href="/how-it-works" className="hover:text-white transition-colors">How it works</Link>
           <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
         </div>
