@@ -13,9 +13,23 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    // YENİ GÜVENLİK DUVARI: Kullanıcı giriş yapmamışsa veritabanına gitmesini engelle
+  // YENİ GÜVENLİK DUVARI: Kullanıcı giriş yapmamışsa veritabanına gitmesini engelle
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+
+    // YENİ: TRIAL KİLİDİ — trial kullanıcısı geçmişe kayıt yapamaz
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_trial')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.is_trial) {
+      return NextResponse.json({ 
+        error: "Saving to history is a subscriber feature. Please upgrade to unlock this.",
+        trialRestricted: true,
+      }, { status: 403 });
     }
 
     const body = await req.json();

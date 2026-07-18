@@ -44,13 +44,34 @@ export async function POST(req: Request) {
     // 2. KREDİ KONTROLÜ (Okuma işlemini Admin ile garantiye alalım)
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('credits')
+      .select('credits, is_trial, trial_ends_at')
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.credits <= 0) {
+    if (!profile) {
       return NextResponse.json({ 
-        error: "Insufficient credits. Please upgrade your plan." 
+        error: "Profile not found." 
+      }, { status: 403 });
+    }
+
+    // 2a. TRIAL SÜRESİ KONTROLÜ — kredi kalsa bile 7 gün dolduysa durdur
+    if (profile.is_trial && profile.trial_ends_at) {
+      const trialEnded = new Date(profile.trial_ends_at) < new Date();
+      if (trialEnded) {
+        return NextResponse.json({
+          error: "Your 7-day free trial has ended. Subscribe to continue running audits.",
+          trialExpired: true,
+        }, { status: 403 });
+      }
+    }
+
+    // 2b. KREDİ KONTROLÜ — trial kullanıcısına farklı mesaj göster
+    if (profile.credits <= 0) {
+      return NextResponse.json({ 
+        error: profile.is_trial 
+          ? "You've used all 3 free trial audits. Subscribe to unlock unlimited access."
+          : "Insufficient credits. Please upgrade your plan.",
+        trialExhausted: profile.is_trial || false,
       }, { status: 403 });
     }
 
