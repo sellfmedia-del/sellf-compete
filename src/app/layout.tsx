@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next"
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+const GA_MEASUREMENT_ID = "G-35FP41G8Q4";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.sellfcompete.com'),
@@ -56,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a]`}>
         {children} {/* Sadece içeriği basıyoruz, Navbar sayfanın kendi içinde */}
         <Analytics />
+        <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />
       </body>
     </html>
   );
