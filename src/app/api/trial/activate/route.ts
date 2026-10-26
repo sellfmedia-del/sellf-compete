@@ -1,85 +1,29 @@
-// Dosya Yolu: src/app/api/trial/activate/route.ts
-import { NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { NextResponse } from 'next/server';
+import { AccessError, adminClient, authenticatedClient } from '@/src/lib/server-access';
 
-// God Mode Admin Anahtarı — RLS'i aşıp profiles tablosuna doğrudan yazmak için
-// (aynı pattern /api/audit/route.ts'de de kullanılıyor, tutarlılık için aynı yaklaşım)
-const supabaseAdmin = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const TRIAL_CREDITS = 3;
-const TRIAL_DAYS = 7;
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { userId, fullName, companyName, email } = await req.json();
-
-    if (!userId || !fullName || !companyName || !email) {
-      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
-    }
-
-    // 1. KÖTÜYE KULLANIM KONTROLÜ
-    // Aynı firma adından (büyük/küçük harf duyarsız) daha önce trial açılmış mı?
-    // Mükemmel bir koruma değil (biri firma adını değiştirebilir) ama ucuz ve ilk bariyer olarak işe yarar.
-    const normalizedCompany = companyName.trim().toLowerCase();
-
-    const { data: existingTrials, error: checkError } = await supabaseAdmin
-      .from("profiles")
-      .select("id, company_name")
-      .eq("is_trial", true)
-      .ilike("company_name", normalizedCompany);
-
-    if (checkError) {
-      console.error("[Trial Activate] Abuse check error:", checkError);
-      // Kontrol hatası kullanıcıyı bloklamasın, sadece logla ve devam et
-    }
-
-    if (existingTrials && existingTrials.length > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "A free trial has already been used for this company. Please subscribe to continue, or contact support if you believe this is a mistake.",
-        },
-        { status: 409 }
-      );
-    }
-
-    // 2. TRIAL DEĞERLERİNİ HESAPLA
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
-
-    // 3. PROFİLİ AKTİVE ET (upsert — trigger'la satır zaten oluşmuş olabilir, olmamış da olabilir)
-    const { error: upsertError } = await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: userId,
-          full_name: fullName,
-          company_name: companyName,
-          is_trial: true,
-          trial_ends_at: trialEndsAt.toISOString(),
-          credits: TRIAL_CREDITS,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-
-    if (upsertError) {
-      console.error("[Trial Activate] Upsert error:", upsertError);
-      return NextResponse.json({ error: "Could not activate trial." }, { status: 500 });
-    }
-
-    console.log(`[Trial Activate] Trial started for ${email} (${companyName}) — ${TRIAL_CREDITS} credits, ends ${trialEndsAt.toISOString()}`);
-
-    return NextResponse.json({
-      success: true,
-      credits: TRIAL_CREDITS,
-      trialEndsAt: trialEndsAt.toISOString(),
-    });
+    const { user } = await authenticatedClient(request);
+    const body = await request.json();
+    if (body.userId && body.userId !== user.id) return NextResponse.json({ error: 'You can only activate your own trial.' }, { status: 403 });
+    if (!user.email_confirmed_at) return NextResponse.json({ error: 'Please verify your email before starting your trial.' }, { status: 403 });
+    const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : '';
+    const companyName = typeof body.companyName === 'string' ? body.companyName.trim() : '';
+    if (!fullName || fullName.length > 200 || !companyName || companyName.length > 200) return NextResponse.json({ error: 'Please provide your name and company.' }, { status: 400 });
+    const admin = adminClient();
+    const { data: profile, error } = await admin.from('profiles').select('is_trial,trial_ends_at,company_name,credits,paddle_status').eq('id', user.id).single();
+    if (error || !profile) throw new Error('Profile unavailable.');
+    if (profile.is_trial) return NextResponse.json({ success: true, credits: profile.credits, trialEndsAt: profile.trial_ends_at });
+    if (profile.paddle_status || profile.company_name || Date.now() - Date.parse(user.created_at) > 48 * 60 * 60 * 1000) return NextResponse.json({ error: 'This account is not eligible for a new trial.' }, { status: 409 });
+    const { data: existing, error: checkError } = await admin.from('profiles').select('id,company_name').eq('is_trial', true);
+    if (checkError) throw new Error('Eligibility check unavailable.');
+    if (existing?.some(p => p.company_name?.trim().toLocaleLowerCase('tr') === companyName.toLocaleLowerCase('tr'))) return NextResponse.json({ error: 'A free trial has already been used for this company.' }, { status: 409 });
+    const endsAt = new Date(Date.now() + 7 * 86400000).toISOString();
+    // Only initialize an untouched profile; never reset an existing credit balance.
+    const { data: updated, error: updateError } = await admin.from('profiles').update({ full_name: fullName, company_name: companyName, is_trial: true, trial_ends_at: endsAt, updated_at: new Date().toISOString() }).eq('id', user.id).eq('is_trial', false).is('company_name', null).select('credits,trial_ends_at').maybeSingle();
+    if (updateError || !updated) return NextResponse.json({ error: 'Trial could not be activated. Please refresh and try again.' }, { status: 409 });
+    return NextResponse.json({ success: true, credits: updated.credits, trialEndsAt: updated.trial_ends_at });
   } catch (error) {
-    console.error("[Trial Activate] Unexpected error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof AccessError ? error.message : 'Trial activation is temporarily unavailable.' }, { status: error instanceof AccessError ? error.status : 503 });
   }
 }

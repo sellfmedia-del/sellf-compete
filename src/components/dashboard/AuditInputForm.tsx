@@ -1,6 +1,8 @@
 'use client';
 import { useState, useRef } from 'react';
-import { FileUp, Layout, ArrowLeft, Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import PlatformSelector from './PlatformSelector';
+import { getPlatform } from '@/src/lib/platforms';
+import { FileUp, ArrowLeft, Zap, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   type: 'product' | 'idea';
@@ -12,7 +14,7 @@ interface Props {
 
 export default function AuditInputForm({ type, onBack, onStart, isLoading }: Props) {
   const [url, setUrl] = useState('');
-  const [platform, setPlatform] = useState('Trendyol');
+  const [platform, setPlatform] = useState('trendyol');
   
   // YENİ STATES: Dosya yönetimi ve metin çıkarma durumları
   const [documentContent, setDocumentContent] = useState<string>('');
@@ -26,6 +28,8 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
     if (!file) return;
 
     setFileName(file.name);
+    setDocumentContent('');
+    if (file.size > 10 * 1024 * 1024) { setFileName('Please choose a file under 10 MB'); return; }
     setIsExtracting(true);
 
     try {
@@ -34,14 +38,14 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
       if (file.type === 'application/pdf') {
         // HATA ÇÖZÜMÜ: SSR (Sunucu) tarafında çökmemesi için kütüphaneyi sadece işlem anında dinamik olarak çağırıyoruz
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          const pageText = textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
           extractedText += pageText + ' ';
         }
       } else if (
@@ -81,7 +85,7 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
       <div className="pt-12 space-y-10">
         <div className="space-y-4">
           <h3 className="text-3xl font-black tracking-tighter uppercase italic">
-            {type === 'product' ? 'Paste Product URL' : 'Describe Your Vision'}
+            {type === 'idea' ? 'Describe Your Vision' : ['b2b', 'physical-store'].includes(platform) ? 'Describe Your Business or Store' : 'Paste Product URL'}
           </h3>
           <div className="relative group">
             {type === 'product' ? (
@@ -90,7 +94,7 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 disabled={isLoading}
-                placeholder="Trendyol, Amazon, Shopify or Marketplace Link..." 
+                placeholder={getPlatform(platform)?.hint || 'Product or website URL...'}
                 className="w-full bg-black/50 border border-zinc-800 rounded-[2rem] py-6 px-8 text-lg focus:outline-none focus:border-orange-500/50 transition-all placeholder:text-zinc-700 disabled:opacity-50"
               />
             ) : (
@@ -134,7 +138,7 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
           
           <button 
             onClick={() => onStart({ url, platform, documentContent })}
-            disabled={isLoading || !url}
+            disabled={isLoading || isExtracting || !url.trim()}
             className="flex-[0.5] w-full bg-white text-black py-5 rounded-full font-black uppercase italic tracking-tight hover:bg-orange-500 transition-all flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="animate-spin" size={20} /> : <>Start Deep Audit <Zap size={18} fill="currentColor" /></>}
@@ -142,20 +146,7 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
         </div>
 
         <div className="pt-10 border-t border-zinc-800/50">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600 mb-6 text-center italic">Required: Select Target Ecosystem</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {['Trendyol', 'Amazon', 'My Website', 'N11', 'Physical Store'].map((p) => (
-              <button 
-                key={p} 
-                onClick={() => setPlatform(p)}
-                disabled={isLoading}
-                className={`py-4 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-2 border ${platform === p ? 'bg-orange-500/10 border-orange-500 text-orange-500' : 'bg-white/5 border-white/5 text-zinc-500 hover:border-zinc-700'}`}
-              >
-                <Layout size={16} className={platform === p ? 'opacity-100' : 'opacity-40'} />
-                {p}
-              </button>
-            ))}
-          </div>
+          <PlatformSelector value={platform} onChange={setPlatform} disabled={isLoading} />
         </div>
       </div>
     </div>

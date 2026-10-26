@@ -14,6 +14,7 @@ export default function TrialSignupPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function TrialSignupPage() {
         password,
         options: {
           emailRedirectTo: `${location.origin}/api/auth/callback`,
-          data: { full_name: fullName, company_name: companyName }, // user_metadata'ya da yazıyoruz
+          data: { full_name: fullName, company_name: companyName, trial_requested: true }, // user_metadata'ya da yazıyoruz
         },
       });
 
@@ -43,6 +44,12 @@ export default function TrialSignupPage() {
       if (!data.user) {
         setError('Something went wrong. Please try again.');
         return;
+      }
+
+      if (!data.session) {
+        setAwaitingVerification(true);
+        setSuccess(true);
+        return; // Email verification is required before authenticated activation.
       }
 
       // 2. Trial profilini aktive et (credits=3, is_trial=true, trial_ends_at=+7gün)
@@ -103,9 +110,9 @@ export default function TrialSignupPage() {
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 size={40} className="text-green-500" />
               </div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-white">Trial Activated</h2>
-              <p className="text-sm text-zinc-400 font-medium">3 free audits are ready for you. Redirecting to your dashboard...</p>
-              <Loader2 className="animate-spin mx-auto text-orange-500 mt-4" size={24} />
+              <h2 className="text-xl font-black uppercase tracking-tight text-white">{awaitingVerification ? 'Verify your email' : 'Trial Activated'}</h2>
+              <p className="text-sm text-zinc-400 font-medium">{awaitingVerification ? 'Check your inbox and verify your email to start your 7-day trial. Then sign in to continue.' : '3 free audits are ready for you. Redirecting to your dashboard...'}</p>
+              {awaitingVerification ? <Link href="/login" className="inline-block mt-4 text-orange-400">Go to sign in</Link> : <Loader2 className="animate-spin mx-auto text-orange-500 mt-4" size={24} />}
             </div>
           ) : (
             <form onSubmit={handleTrialSignup} className="space-y-5">

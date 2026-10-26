@@ -1,4 +1,5 @@
 // Dosya Yolu: src/app/api/account/delete/route.ts
+import { previewIsReadOnly } from '@/src/lib/preview-safety';
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/src/utils/supabase/server";
@@ -9,6 +10,7 @@ const supabaseAdmin = createSupabaseClient(
 );
 
 export async function DELETE(req: Request) {
+  if (previewIsReadOnly()) return NextResponse.json({ error: 'Preview is read-only.' }, { status: 403 });
   try {
     const supabase = await createServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -37,7 +39,7 @@ export async function DELETE(req: Request) {
       });
 
       if (!paddleResponse.ok) {
-         console.error("[Paddle Error] Abonelik iptal edilemedi");
+         return NextResponse.json({ error: "Your subscription could not be canceled. Your account has been preserved. Please try again later." }, { status: 502 });
       }
     }
 

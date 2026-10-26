@@ -32,5 +32,5 @@ export function useMyProductDetail(id: string | undefined) {
     fetchProductDetail();
   }, [id]);
 
-  return { product, isLoading };
+  return { product, isLoading, setProduct };
 }

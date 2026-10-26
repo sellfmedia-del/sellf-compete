@@ -1,4 +1,5 @@
 // Dosya Yolu: app/api/save-audit/route.ts
+import { previewIsReadOnly } from '@/src/lib/preview-safety';
 import { NextResponse } from "next/server";
 // ESKİ SİLİNDİ: import { supabase } from "@/src/lib/supabase"; 
 // YENİ EKLENDİ: Çerezleri okuyabilen sunucu tarafı güvenli istemcimiz
@@ -8,6 +9,7 @@ import { createClient } from "@/src/utils/supabase/server";
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  if (previewIsReadOnly()) return NextResponse.json({ error: 'Preview is read-only.' }, { status: 403 });
   try {
     // YENİ: İstemciyi başlat ve oturum açmış kullanıcıyı (çerezlerden) yakala
     const supabase = await createClient();
