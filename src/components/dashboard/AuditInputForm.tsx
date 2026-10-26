@@ -85,7 +85,7 @@ export default function AuditInputForm({ type, onBack, onStart, isLoading }: Pro
       <div className="pt-12 space-y-10">
         <div className="space-y-4">
           <h3 className="text-3xl font-black tracking-tighter uppercase italic">
-            {type === 'product' ? 'Paste Product URL' : 'Describe Your Vision'}
+            {type === 'idea' ? 'Describe Your Vision' : ['b2b', 'physical-store'].includes(platform) ? 'Describe Your Business or Store' : 'Paste Product URL'}
           </h3>
           <div className="relative group">
             {type === 'product' ? (
