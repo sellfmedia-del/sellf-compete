@@ -7,6 +7,7 @@ import AuditInputForm from '@/src/components/dashboard/AuditInputForm';
 import AuditReport from '@/src/components/dashboard/AuditReport';
 import { Globe, Lock, Clock } from 'lucide-react';
 import Link from 'next/link';
+import CreditDialog, { needsPurchase } from '@/src/components/dashboard/CreditDialog';
 import { createClient } from '@/src/utils/supabase/client';
 
 interface Profile {
@@ -28,6 +29,7 @@ export default function DashboardPage() {
   // YENİ: Profil ve hata state'leri
   const [profile, setProfile] = useState<Profile | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -39,10 +41,16 @@ export default function DashboardPage() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('credits, is_trial, trial_ends_at')
+        .select('credits, is_trial, trial_ends_at, paddle_status, company_name')
         .eq('id', user.id)
         .single();
-
+      if (data && user.user_metadata?.trial_requested && !data.is_trial && !data.paddle_status && !data.company_name) {
+        const activation = await fetch('/api/trial/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: user.user_metadata.full_name, companyName: user.user_metadata.company_name }) });
+        const result = await activation.json();
+        if (!activation.ok) { setAuditError(result.error || 'Your trial could not be activated.'); return; }
+        setProfile({ credits: result.credits, is_trial: true, trial_ends_at: result.trialEndsAt });
+        return;
+      }
       if (!error && data) {
         setProfile(data as Profile);
       }
@@ -77,6 +85,7 @@ export default function DashboardPage() {
 
       // YENİ: 403 (trial bitti / kredi bitti) durumunu ayrı ele al
       if (!response.ok) {
+        if (needsPurchase(data.code)) setPurchaseMessage(data.error);
         setAuditError(data.error || 'Something went wrong. Please try again.');
         setIsLoading(false);
         return;
@@ -102,6 +111,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500 selection:text-white">
+      <CreditDialog open={purchaseMessage !== null} message={purchaseMessage || undefined} onClose={() => setPurchaseMessage(null)} />
       <div className="fixed top-28 right-8 z-50">
         <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-1 rounded-full flex items-center gap-1 shadow-2xl">
           <button 
@@ -135,7 +145,7 @@ export default function DashboardPage() {
               </span>
             </div>
             <Link
-              href="/register"
+              href="/dashboard/account?purchase=subscription"
               className="text-[10px] font-black uppercase tracking-widest bg-orange-500 text-black px-4 py-2 rounded-full hover:bg-orange-400 transition-all"
             >
               Upgrade Now
@@ -151,7 +161,7 @@ export default function DashboardPage() {
               <span>{auditError}</span>
             </div>
             <Link
-              href="/register"
+              href="/dashboard/account?purchase=subscription"
               className="text-[10px] font-black uppercase tracking-widest bg-white text-black px-4 py-2 rounded-full hover:bg-zinc-200 transition-all shrink-0"
             >
               Subscribe

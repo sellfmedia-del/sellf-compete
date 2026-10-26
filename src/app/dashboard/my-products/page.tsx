@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 // YENİ: Trash2 ikonu eklendi
 import { Plus, Search, Link as LinkIcon, Building2, ShoppingCart, Target, ChevronRight, Activity, Loader2, Trash2 } from 'lucide-react';
+import PlatformSelector from '@/src/components/dashboard/PlatformSelector';
+import CreditDialog, { needsPurchase } from '@/src/components/dashboard/CreditDialog';
+import { getPlatform, platformLabel } from '@/src/lib/platforms';
 import { useMyProducts } from '@/src/hooks/useMyProducts';
 
 export default function MyProductsPage() {
@@ -14,7 +17,9 @@ export default function MyProductsPage() {
   const { products, isLoading, refreshProducts, deleteProduct } = useMyProducts();
 
   const [isFormExpanded, setIsFormExpanded] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   // YENİ: Silinen ürünü takip etmek için yüklenme state'i
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -35,6 +40,7 @@ export default function MyProductsPage() {
     }
 
     setIsSubmitting(true);
+    setFormError(null);
 
     try {
       const response = await fetch('/api/arena/initialize', {
@@ -49,11 +55,12 @@ export default function MyProductsPage() {
         }),
       });
 
+      const result = await response.json();
       if (!response.ok) {
-        throw new Error("Failed to initialize tracker.");
+        if (needsPurchase(result.code)) { setPurchaseMessage(result.error); return; }
+        throw new Error(result.error || 'Failed to initialize tracker.');
       }
-
-      const { data } = await response.json();
+      const { data } = result;
       
       setIsFormExpanded(false);
       setProductLink('');
@@ -69,7 +76,7 @@ export default function MyProductsPage() {
 
     } catch (error) {
       console.error("Initialization Error:", error);
-      alert("Something went wrong while initializing the tracker.");
+      setFormError(error instanceof Error ? error.message : 'Could not initialize the tracker.');
     } finally {
       setIsSubmitting(false);
     }
@@ -99,6 +106,8 @@ export default function MyProductsPage() {
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-12 pb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
       
+      <CreditDialog open={purchaseMessage !== null} message={purchaseMessage || undefined} onClose={() => setPurchaseMessage(null)} />
+      {formError && <p role="alert" className="text-sm text-red-400 border border-red-500/20 rounded-2xl p-4">{formError}</p>}
       {/* HEADER & MAGIC INPUT SECTION */}
       <div className="flex flex-col items-center justify-center pt-8 relative z-20">
         <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic text-white mb-8 text-center">
@@ -115,7 +124,7 @@ export default function MyProductsPage() {
               value={productLink}
               onChange={(e) => setProductLink(e.target.value)}
               onFocus={handleInputFocus}
-              placeholder="Paste product link to add new..." 
+              placeholder={['b2b', 'physical-store'].includes(platform) ? 'Company or store URL / description...' : 'Paste product link to add new...'}
               className="w-full bg-transparent py-5 text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none"
               disabled={isSubmitting}
             />
@@ -123,29 +132,23 @@ export default function MyProductsPage() {
               <button 
                 className="w-12 h-12 bg-orange-500 hover:bg-orange-400 rounded-full flex items-center justify-center text-white transition-colors shadow-lg disabled:opacity-50"
                 disabled={isSubmitting}
+                onClick={() => setIsFormExpanded(true)}
+                aria-label="Add product"
               >
                 {isSubmitting ? <Loader2 size={24} className="animate-spin" /> : <Plus size={24} />}
               </button>
             </div>
           </div>
 
-          <div className={`overflow-hidden transition-all duration-700 ease-in-out absolute top-full left-0 w-full z-20 ${isFormExpanded ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0 pointer-events-none'}`}>
+          <div className={`overflow-hidden transition-all duration-700 ease-in-out absolute top-full left-0 w-full z-20 ${isFormExpanded ? 'max-h-[min(80vh,1000px)] overflow-y-auto opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0 pointer-events-none'}`}>
             <div className="bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
+              <p className="text-xs text-zinc-400 mb-4">{getPlatform(platform)?.hint}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Sol Kolon */}
                 <div className="space-y-6">
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-3"><Target size={14} /> Target Platform</label>
-                    <select 
-                      value={platform}
-                      onChange={(e) => setPlatform(e.target.value)}
-                      disabled={isSubmitting}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-orange-500/50 disabled:opacity-50"
-                    >
-                      <option value="trendyol">Trendyol</option>
-                      <option value="amazon">Amazon</option>
-                      <option value="website">Own Website</option>
-                    </select>
+                    <PlatformSelector value={platform} onChange={setPlatform} disabled={isSubmitting} />
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-3"><Activity size={14} /> Sector & Category</label>
@@ -243,7 +246,7 @@ export default function MyProductsPage() {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-[9px] font-black uppercase tracking-widest text-zinc-300 group-hover:border-orange-500/50 group-hover:text-white transition-colors">
-                      {product.platform}
+                      {platformLabel(product.platform)}
                     </span>
                     <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
                       {formatTimeAgo(product.updated_at)}

@@ -136,7 +136,7 @@ export default function AuditReport({ data, auditType, platform, onReset, isTria
           <h2 className="text-4xl font-black tracking-tighter uppercase italic">Market <span className="text-white/20">Intelligence</span> Report</h2>
         </div>
         <div className="text-right text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-          ID: #SC-{Math.floor(Math.random() * 9000) + 1000} / March 19, 2026
+          ID: {data.report_id?.slice(0, 8) || 'Archived report'} / {data.created_at ? new Date(data.created_at).toLocaleDateString() : 'Date not recorded'}
         </div>
       </div>
 
@@ -263,12 +263,14 @@ export default function AuditReport({ data, auditType, platform, onReset, isTria
         </div>
       </div>
 
+      {Array.isArray(data.warnings) && data.warnings.length > 0 && <div className="text-sm text-amber-400 space-y-2">{data.warnings.map((warning: string) => <p key={warning}>{warning}</p>)}</div>}
+      {Array.isArray(data.sources) && data.sources.length > 0 && <section className="border-t border-zinc-800 pt-6"><h3 className="font-bold mb-3">Research sources</h3><ul className="space-y-2 text-sm">{data.sources.map((source: {url: string; title: string}) => <li key={source.url}><a href={/^https?:\/\//.test(source.url) ? source.url : undefined} target="_blank" rel="noopener noreferrer" className="text-orange-400 underline">{source.title}</a></li>)}</ul></section>}
       {/* AKSİYON BUTONLARI */}
       <div className="flex flex-col md:flex-row gap-4 pt-12 pb-20">
         {isTrial ? (
           // TRIAL KULLANICISI: indirme/kaydetme yerine tek bir upgrade CTA'sı
           <Link
-            href="/register"
+            href="/dashboard/account?purchase=subscription"
             className="flex-1 bg-orange-500 text-black py-6 rounded-full font-black uppercase italic tracking-tight hover:bg-orange-400 transition-all flex items-center justify-center gap-3 shadow-xl shadow-orange-500/10"
           >
             <Lock size={20} />

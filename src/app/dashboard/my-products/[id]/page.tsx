@@ -4,6 +4,9 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, RefreshCw, Loader2, Package, ShoppingCart, Store, LineChart, AlertCircle, TrendingUp, TrendingDown, MessageSquare, Tag, Award, Users, Search } from 'lucide-react';
+import CreditDialog, { needsPurchase } from '@/src/components/dashboard/CreditDialog';
+import { ReviewCoverage, ObservationChanges } from '@/src/components/dashboard/ObservationDetails';
+import { platformLabel } from '@/src/lib/platforms';
 import { useMyProductDetail } from '@/src/hooks/useMyProductDetail';
 
 export default function ProductDetailArenaPage() {
@@ -11,13 +14,16 @@ export default function ProductDetailArenaPage() {
   const router = useRouter();
   const id = params?.id as string;
 
-  const { product, isLoading } = useMyProductDetail(id);
+  const { product, isLoading, setProduct } = useMyProductDetail(id);
   const [activeTab, setActiveTab] = useState<'my_product' | 'competitors' | 'brands' | 'market'>('my_product');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
 
   // YENİ: Gerçek API Bağlantısı (Delta Engine & Credit System)
   const handleUpdateData = async () => {
     setIsUpdating(true);
+    setUpdateError(null);
     try {
       const response = await fetch('/api/arena/update', {
         method: 'POST',
@@ -28,15 +34,16 @@ export default function ProductDetailArenaPage() {
       const result = await response.json();
 
       if (!response.ok) {
+        if (needsPurchase(result.code)) { setPurchaseMessage(result.error); return; }
         throw new Error(result.error || "Update failed");
       }
       
       // Veri başarıyla güncellendi ve kredi düşüldü. Sayfayı yenileyerek yeni Delta'yı ekrana basıyoruz.
-      window.location.reload(); 
+      setProduct(result.data);
       
     } catch (error: any) {
       console.error("Error updating arena data:", error);
-      alert(error.message || "Failed to update data. Please try again.");
+      setUpdateError(error instanceof Error ? error.message : 'Failed to update data. Please try again.');
     } finally {
       setIsUpdating(false);
     }
@@ -63,11 +70,16 @@ export default function ProductDetailArenaPage() {
   }
 
   const { latest_data, historical_data } = product;
-  const isDayZero = historical_data.length === 0;
+  const isDayZero = !Array.isArray(historical_data) || historical_data.length === 0;
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-10 pb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
       
+      <CreditDialog open={purchaseMessage !== null} message={purchaseMessage || undefined} onClose={() => setPurchaseMessage(null)} />
+      {updateError && <p role="alert" className="rounded-2xl border border-red-500/30 p-4 text-sm text-red-400">{updateError}</p>}
+      {latest_data?.observed_at && <p className="text-xs text-zinc-400">Last scan: {new Date(latest_data.observed_at).toLocaleString()}</p>}
+      {latest_data?.schema_version !== 2 && <p className="text-sm text-amber-400">This is an older report. Run an update to establish a verified comparison baseline.</p>}
+      {Array.isArray(latest_data?.warnings) && latest_data.warnings.map((warning: string) => <p key={warning} role="status" className="text-sm text-amber-400 rounded-2xl border border-amber-500/20 p-4">{warning}</p>)}
       {/* HEADER SECTION */}
       <div className="flex flex-col gap-6">
         <button 
@@ -81,7 +93,7 @@ export default function ProductDetailArenaPage() {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <span className="px-3 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-full text-[9px] font-black uppercase tracking-widest">
-                {product.platform}
+                {platformLabel(product.platform)}
               </span>
               <span className="px-3 py-1 bg-zinc-800 text-zinc-400 rounded-full text-[9px] font-black uppercase tracking-widest">
                 {product.category}
@@ -153,7 +165,7 @@ export default function ProductDetailArenaPage() {
               </div>
               <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6">
                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">New Reviews</p>
-                 <h3 className="text-3xl font-black italic text-white">+{latest_data?.my_product?.new_reviews_count || 0}</h3>
+                 <h3 className="text-3xl font-black italic text-white">{typeof latest_data?.my_product?.new_reviews_count === 'number' ? `${latest_data.my_product.new_reviews_count > 0 ? '+' : ''}${latest_data.my_product.new_reviews_count}` : '—'}</h3>
                  <p className="text-[10px] font-bold text-zinc-500 mt-2 uppercase">{latest_data?.my_product?.sentiment_ratio}</p>
               </div>
               <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-center items-center text-center">
@@ -172,9 +184,11 @@ export default function ProductDetailArenaPage() {
               </div>
             </div>
 
+            <ObservationChanges observation={latest_data?.my_product} />
             {/* Recent Reviews Section */}
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-6">
               <h4 className="text-sm font-black uppercase tracking-widest text-zinc-400 mb-4 flex items-center gap-2"><MessageSquare size={16}/> Recent Feedback</h4>
+              <ReviewCoverage observation={latest_data?.my_product} />
               <ul className="space-y-3">
                 {latest_data?.my_product?.recent_10_reviews?.map((review: string, i: number) => (
                   <li key={i} className="text-sm text-zinc-300 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50">"{review}"</li>
@@ -195,11 +209,13 @@ export default function ProductDetailArenaPage() {
                       <h3 className="text-lg font-bold text-white leading-tight">{comp.name}</h3>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-black italic text-white">{comp.current_price}</p>
+                      <p className="text-2xl font-black italic text-white">{comp.current_price || 'Not verified'}</p>
                       <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-1">{comp.price_vs_category_avg}</p>
                     </div>
                   </div>
                   
+                  <ObservationChanges observation={comp} />
+                  <ReviewCoverage observation={comp} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 flex items-center gap-1"><Award size={12}/> Badges & Campaigns</p>
@@ -215,6 +231,7 @@ export default function ProductDetailArenaPage() {
                       <p className="text-xs text-zinc-500 mt-1">Rating: {comp.average_rating}</p>
                     </div>
                   </div>
+                  {Array.isArray(comp.recent_10_reviews) && comp.recent_10_reviews.length > 0 && <ul className="mt-4 space-y-2">{comp.recent_10_reviews.map((review: string, index: number) => <li key={index} className="text-sm text-zinc-400 border-t border-zinc-800 pt-2">{review}</li>)}</ul>}
                </div>
             ))}
           </div>
@@ -298,7 +315,7 @@ export default function ProductDetailArenaPage() {
         )}
 
       </div>
-
+      {Array.isArray(latest_data?.sources) && latest_data.sources.length > 0 && <section className="border-t border-zinc-800 pt-6"><h2 className="font-bold mb-3">Sources collected in this scan</h2><ul className="space-y-2 text-sm">{latest_data.sources.map((source: {url: string; title: string; observed_at: string}, index: number) => <li key={`${source.url}-${index}`}><a href={/^https?:\/\//.test(source.url) ? source.url : undefined} target="_blank" rel="noopener noreferrer" className="text-orange-400 underline">{source.title}</a><span className="text-zinc-500"> · {new Date(source.observed_at).toLocaleString()}</span></li>)}</ul></section>}
     </div>
   );
 }

@@ -2,9 +2,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, CreditCard, ShieldAlert, Edit3, Check, Zap, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ShieldAlert, Edit3, Check, Zap, Loader2, AlertCircle } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
-import { initializePaddle, Paddle } from '@paddle/paddle-js';
+import CheckoutPanel from '@/src/components/dashboard/CheckoutPanel';
 import { useRouter } from 'next/navigation'; // YENİ: Yönlendirme için eklendi
 
 export default function AccountPage() {
@@ -21,25 +21,16 @@ export default function AccountPage() {
 
   // User States
   const [userEmail, setUserEmail] = useState<string>('');
-  const [userId, setUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState<string>('');
   
   // Billing States
   const [credits, setCredits] = useState<number>(0);
   const [status, setStatus] = useState<string>('Loading...');
-  const [paddle, setPaddle] = useState<Paddle>();
+
 
   const supabase = createClient();
 
   useEffect(() => {
-    // 1. Initialize Paddle Backend
-    initializePaddle({ 
-      environment: process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT as 'sandbox' | 'production', 
-      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN! 
-    }).then((paddleInstance: Paddle | undefined) => {
-      if (paddleInstance) setPaddle(paddleInstance);
-    });
-
     // 2. Fetch Live User & Profile Data
     async function fetchUserData() {
       setIsLoading(true);
@@ -47,7 +38,6 @@ export default function AccountPage() {
       
       if (user) {
         setUserEmail(user.email || '');
-        setUserId(user.id);
 
         const { data: profile } = await supabase
           .from('profiles')
@@ -90,21 +80,6 @@ export default function AccountPage() {
       setIsUpdating(false);
     } else {
       setIsEditing(false);
-    }
-  };
-
-  // 4. PADDLE CREDIT UPSALL TRIGGER
-  const handleBuyCredits = () => {
-    if (paddle && userId) {
-      paddle.Checkout.open({
-        items: [{ priceId: "pri_01kr1kcpmnjsqadxa8mpd3jhnp", quantity: 1 }], 
-        customer: { email: userEmail },
-        customData: {
-          userId: userId,
-          app: "sellfcompete",
-          planType: "credit" 
-        }
-      });
     }
   };
 
@@ -201,7 +176,7 @@ export default function AccountPage() {
               <div className="relative group">
                 <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isEditing ? 'text-orange-500' : 'text-zinc-700'}`} size={18} />
                 <input 
-                  type={isEditing ? "text" : "password"} 
+                  type="password"
                   disabled={!isEditing}
                   value={isEditing ? newPassword : "••••••••••••"}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -234,27 +209,9 @@ export default function AccountPage() {
                 )}
               </div>
 
-              {/* BUY CREDITS BUTTON */}
-              <button 
-                onClick={handleBuyCredits}
-                disabled={isLoading}
-                className="w-full bg-orange-500 text-black py-4 rounded-2xl font-black uppercase italic text-xs hover:bg-orange-400 transition-all tracking-tight flex items-center justify-center gap-2 mb-8 shadow-lg shadow-orange-500/10 group/btn disabled:opacity-50"
-              >
-                <Zap size={14} fill="currentColor" /> Buy 1 More Credit <span className="opacity-60 text-[9px]">($1.90)</span>
-              </button>
-
-              <div className="flex items-center gap-4 p-4 border border-zinc-800 rounded-2xl bg-black/20">
-                <CreditCard className="text-zinc-600" size={20} />
-                <div>
-                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest italic">Subscription System</p>
-                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-tighter">Paddle Sandbox</p>
-                </div>
-              </div>
+              <CheckoutPanel onConfirmed={() => window.location.reload()} />
+              <p className="text-xs text-zinc-500 mt-4">Payments are securely processed by Paddle.</p>
             </div>
-
-            <button className="mt-8 text-[10px] font-black uppercase text-zinc-500 hover:text-white transition-all underline underline-offset-4 decoration-zinc-800 relative z-10 text-left">
-              Manage Billing via Paddle
-            </button>
             <Zap size={150} className="absolute -right-10 -bottom-10 opacity-[0.02] text-orange-500 pointer-events-none" />
           </div>
         </div>
