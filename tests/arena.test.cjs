@@ -116,15 +116,20 @@ test('collection failure preserves previous snapshot and refunds the credit',asy
 test('engine supports eight research routes without manufacturing numeric observations',async()=>{
   const oldFetch=global.fetch;const saved={...process.env};
   process.env.APIFY_API_TOKEN='test';process.env.TAVILY_API_KEY='test';delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  process.env.COMPETE_ARENA_BUDGET_USD='1';process.env.COMPETE_APIFY_MAX_RUN_USD='0.1';process.env.COMPETE_TAVILY_CREDIT_USD='0.008';
+  let actorCalls=0,searchCalls=0;
   global.fetch=async(url,options)=>{
-    if(String(url).includes('apify.com'))return Response.json([{type:'product',url:'https://trendyol.com/p-p-123',title:'Observed product',pricing:{current_price:899,currency:'TRY'},metrics:{rating:{comment_count:20}}}]);
+    if(String(url).includes('apify.com')){actorCalls++;assert.equal(new URL(url).searchParams.get('maxTotalChargeUsd'),'0.1');return Response.json([{type:'product',url:'https://trendyol.com/p-p-123',title:'Observed product',pricing:{current_price:899,currency:'TRY'},metrics:{rating:{comment_count:20}}}]);}
+    searchCalls++;
     const query=JSON.parse(options.body).query;assert.ok(query.length>0);
     return Response.json({results:[{url:'https://source.example.com/research',title:'Research',content:'Observed public evidence'}]});
   };
   try {
     for(const platform of PLATFORMS){
+      actorCalls=0;searchCalls=0;
       const result=await runArenaEngine('https://trendyol.com/p-p-123',platform.id,'Test',[],[]);
       assert.equal(result.platform,platform.id);assert.ok(result.sources.length>0);
+      assert.equal(searchCalls,1);assert.equal(actorCalls,['amazon','trendyol'].includes(platform.id)?1:0);
       if(!['amazon','trendyol'].includes(platform.id)) assert.equal(result.my_product.price_amount,null);
     }
   }finally{global.fetch=oldFetch;process.env=saved;}

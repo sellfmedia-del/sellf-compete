@@ -11,6 +11,7 @@ Target: `sellfmedia-del/sellf-compete`, Vercel `sellf-compete`, Supabase `yfighb
 - Authenticated, one-time trial activation; email verification callback; trial-to-paid state clearing.
 - Branded inline Paddle checkout and credit-limit dialog. Webhook entitlement comes from signed catalog line items. Payment crediting/audit insertion is atomic and deduplicated by transaction ID; status events respect their event time.
 - Abort account deletion if subscription cancellation fails.
+- Bound provider attempts, model input/output/thinking, actor charges and research evidence. Refuse paid scans until reviewed spending budgets are configured; see [cost-review.md](cost-review.md). Cost parity and profitability remain unverified.
 
 ## Validation
 
@@ -38,6 +39,8 @@ No real marketplace scan or Paddle purchase was run. Validate direct-provider re
 ## Production gate
 
 The migration is prepared but has not been applied to production. Before release:
+
+Complete the billing comparison and unit economics in `docs/cost-review.md` first. Missing budget settings deliberately disable the new scan engines; configuring an arbitrary cap is not proof of equal cost or profit. Do not release the branch before this gate is satisfied.
 
 1. Reconfirm target project and organization. Export existing function definitions, permissions and schema metadata for the affected functions/tables; take an appropriate database backup.
 2. Present and approve `supabase/migrations/20261026140124_secure_compete_credit_rpc.sql`. It restricts the existing credit function and trigger, adds nullable payment reference/event-time columns plus an index, and adds service-role-only payment/status functions. It does not rewrite historical rows or delete data.
